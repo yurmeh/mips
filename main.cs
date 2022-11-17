@@ -11,15 +11,16 @@ using System.Net;
 using Microsoft.Win32;
 using System.Runtime.InteropServices;
 using System.Timers;
+using MIPS;
 
-namespace ConsoleApp117
+namespace ConsoleApp98
 {
     class Program
     {
         static void Main(string[] args)
         {
             Globals.instructionList = interpreter(Globals.instructionList, Globals.re1, Globals.re2, Globals.re3);
-            Console.WriteLine(Globals.instructionList.Count);
+          
             Globals.ram[10] = 100;
             MainRun(1);
 
@@ -92,16 +93,16 @@ namespace ConsoleApp117
 
             public static int pc = 0;
             public static int count = 0;
-            public static string re1 = @"(\w+) (\S+),(\S+),(\S+)";
-            public static string re2 = @"(\w+) (\S+),(\S+)\((\S+)\)";
-            public static string re3 = @"(\w+) (\S+)";
+            public static string re1 = @"(\w+) (\S+),(\S+),(\S+)"; //add sub registers
+            public static string re2 = @"(\w+) (\S+),(\S+)\((\S+)\)"; //lw
+            public static string re3 = @"(\w+) (\S+)";  // jump
             public static Stack<List<string>> ifid = new Stack<List<string>>();
             public static Stack<List<string>> idex = new Stack<List<string>>();
             public static Stack<List<string>> exmem = new Stack<List<string>>();
             public static Stack<List<string>> memwb = new Stack<List<string>>();
             public static Barrier b = new Barrier(5);
             public static Barrier b2 = new Barrier(6);
-            public static List<string> instructionList = new List<string> {  "beq $s6,$s7,4","add $v1,$t2,$t3", "lw $a0,5($a2)", "add $v0,$t6,$t7", "add $v0,$t6,$t7", "add $a2,$a3,$t0", "add $v0,$t6,$t7", "add $a2,$a3,$t0", "add $a2,$a3,$t0", "add $a2,$a3,$t0", "add $a2,$a3,$t0", "add $a2,$a3,$t0" };
+            public static List<string> instructionList = new List<string> {  "sub $v1,$t2,$t3" };
             public static int[] ram = new int[100];
             public static bool run = true;
             public static System.Timers.Timer aTimer = new System.Timers.Timer(2000);
@@ -117,10 +118,10 @@ namespace ConsoleApp117
                 int pc = Globals.pc;
                 List<string> instructions = Globals.instructionList;
                 Console.WriteLine("the pc is " + pc);
-                Console.WriteLine("the instruction length is " + instructions.Count);
+                
                 if (pc < instructions.Count)
                 {
-                   
+
 
                     List<string> instruction = new List<string>()
                 { instructions[pc], instructions[pc+1], instructions[pc+2], instructions[pc+3] };
@@ -165,11 +166,31 @@ namespace ConsoleApp117
                             instruction[1] = Globals.registers[v1].ToString();
                             instruction[2] = Globals.registers[v2].ToString();
                             break;
+                        case "bne":
+                            instruction[1] = Globals.registers[v1].ToString();
+                            instruction[2] = Globals.registers[v2].ToString();
+                            break;
+                        case "slt":
+                            instruction[2] = Globals.registers[v2].ToString();
+                            instruction[3] = Globals.registers[v3].ToString();
+                            break;
                         case "lw":
                             instruction[3] = Globals.registers[v3].ToString();
+                            break ;
+                        case "sw":
+                            instruction[3] = Globals.registers[v3].ToString();
+                            instruction[1] = Globals.registers[v1].ToString();
                             break;
                         case "j":
                             instruction[1] = Globals.registers[v1].ToString();
+                            break;
+                        case "and":
+                            instruction[2] = Globals.registers[v2].ToString();
+                            instruction[3] = Globals.registers[v3].ToString();
+                            break;
+                        case "or":
+                            instruction[2] = Globals.registers[v2].ToString();
+                            instruction[3] = Globals.registers[v3].ToString();
                             break;
                     }
                     Globals.b.SignalAndWait();
@@ -201,7 +222,7 @@ namespace ConsoleApp117
                         case "add":
                             result = int.Parse(instruction[2]) + int.Parse(instruction[3]);
                             output = new List<string>() { instruction[0], instruction[1], result.ToString() };
-                            break;
+                            break;                       
                         case "sub":
                             result = int.Parse(instruction[2]) - int.Parse(instruction[3]);
                             output = new List<string>() { instruction[0], instruction[1], result.ToString() };
@@ -215,15 +236,48 @@ namespace ConsoleApp117
                             }
                             else
                                 instruction[1] = "not";
-                           
-                            output = new List<string>() { instruction[0], instruction[1],instruction[3] };
+                            output = new List<string>() { instruction[0], instruction[1], instruction[3] };
+                            break;
+                        case "bne":
+                            if (int.Parse(instruction[1]) - int.Parse(instruction[2]) == 0)
+                            {
+                                instruction[1] = "equal";
+
+
+                            }
+                            else
+                                instruction[1] = "not";
+                            output = new List<string>() { instruction[0], instruction[1], instruction[3] };
+                            break;
+                        case "slt":
+                            if (int.Parse(instruction[1]) < int.Parse(instruction[2]) )
+                            {
+                                instruction[2] = "less";
+
+
+                            }
+                            else
+                                instruction[1] = "not";
+                            output = new List<string>() { instruction[0], instruction[1], instruction[3] };
                             break;
                         case "lw":
                             result = int.Parse(instruction[2]) + int.Parse(instruction[3]);
                             output = new List<string>() { instruction[0], instruction[1], result.ToString() };
                             break;
+                        case "sw":
+                            result = int.Parse(instruction[2]) + int.Parse(instruction[3]);
+                            output = new List<string>() { instruction[0], instruction[1], result.ToString() };
+                            break;
                         case "j":
                             output = new List<string>() { instruction[0], instruction[1] };
+                            break;
+                        case "and":
+                            logical binary_num = new logical(instruction[2]);
+                            output = new List<string>() { instruction[0], instruction[1], binary_num.logical_and(instruction[3]) };
+                            break;
+                        case "or":
+                            logical binary_num1 = new logical(instruction[2]);
+                            output = new List<string>() { instruction[0], instruction[1], binary_num1.logical_or(instruction[3]) };
                             break;
 
 
@@ -260,6 +314,15 @@ namespace ConsoleApp117
 
                     }
 
+                    if (instruction[0] == "sw")
+                    {
+                        flag = true;
+                        int address = int.Parse(instruction[2]);
+                        int value = Globals.ram[address];
+                        Globals.ram[address] = int.Parse(instruction[1]);
+
+                    }
+
                     Globals.b.SignalAndWait();
                     if (flag)
                     {
@@ -289,10 +352,7 @@ namespace ConsoleApp117
                     Globals.log.Add("5");
                     List<string> instruction = Globals.memwb.Pop();
                     Console.WriteLine("wb working on " + instruction[0]);
-                    foreach (string item in instruction)
-                    {
-                        Console.WriteLine(item);
-                    }
+                   
                     switch (instruction[0])
                     {
                         case "lw":
@@ -300,12 +360,10 @@ namespace ConsoleApp117
                             Globals.registers[instruction[1]] = int.Parse(instruction[2]);
                             break;
                         case "add":
-                            Globals.log.Add(instruction[2]);
                             Globals.b.SignalAndWait();
                             Globals.registers[instruction[1]] = int.Parse(instruction[2]);
                             break;
                         case "sub":
-                            Globals.log.Add(instruction[2]);
                             Globals.b.SignalAndWait();
                             Globals.registers[instruction[1]] = int.Parse(instruction[2]);
                             break;
@@ -317,10 +375,35 @@ namespace ConsoleApp117
                             if (instruction[1] == "equal")
                             {
                                 Globals.b.SignalAndWait();
-                                Console.WriteLine("beq"+instruction[2]);
-                                Globals.pc = Globals.pc  + int.Parse(instruction[2]);
+                              
+                                Globals.pc = Globals.pc + int.Parse(instruction[2]);
                             }
                             break;
+                        case "bne":
+                            if (instruction[1] == "not")
+                            {
+                                Globals.b.SignalAndWait();
+
+                                Globals.pc = Globals.pc + int.Parse(instruction[2]);
+                            }
+                            break;
+                        case "slt":
+                            if (instruction[1] == "less")
+                            {
+                                Globals.b.SignalAndWait();
+
+                                Globals.registers[instruction[1]]= int.Parse(instruction[2]);
+                            }
+                            break;
+                        case "and":
+                            Globals.b.SignalAndWait();
+                            Globals.registers[instruction[1]] = int.Parse(instruction[2]);
+                            break;
+                        case "or":
+                            Globals.b.SignalAndWait();
+                            Globals.registers[instruction[1]] = int.Parse(instruction[2]);
+                            break;
+
 
                     }
 
@@ -352,11 +435,9 @@ namespace ConsoleApp117
 
             SetTimer();
 
-            Thread.Sleep(25000);
-            Console.WriteLine(Globals.registers["$v0"]);
-            Console.WriteLine(Globals.registers["$v1"]);
-            Console.WriteLine(Globals.registers["$a0"]);
-            Console.WriteLine(Globals.pc);
+            Thread.Sleep(10000);
+           
+          
 
 
 
@@ -382,8 +463,6 @@ namespace ConsoleApp117
 
             else
             {
-                Console.WriteLine("i stopped");
-                Console.WriteLine(Globals.ifid.Count.ToString(),  Globals.idex.Count.ToString() , Globals.exmem.Count.ToString() , Globals.memwb.Count.ToString());
                 Globals.run = false;
                 Globals.b2.SignalAndWait();
                 Globals.aTimer.Stop();
