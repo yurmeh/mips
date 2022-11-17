@@ -1,2 +1,6 @@
-# mips
-YB project simulating a processor
+# MIPS simulator
+YB project 
+
+
+Simulating MIPS processor with visual aids
+
