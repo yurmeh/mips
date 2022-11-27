@@ -1,0 +1,6 @@
+main run get file names
+a proccess that creates each a data object
+(turn the globals to a class that object for each switch)
+each time slice we give the control to a function that decided which one we give the next slice based on technique given by client(later)
+he decided who to give to
+we have a function that does the context switch and lets the program keep running
