@@ -1,0 +1,7 @@
+or $v2,$v2,$t3
+or $v2,$v2,$t3
+or $v2,$v2,$t3
+or $v2,$v2,$t3
+or $v2,$v2,$t3
+or $v2,$v2,$t3
+or $v2,$v2,$t3
