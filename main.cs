@@ -14,6 +14,7 @@ using System.Runtime.InteropServices;
 using System.Timers;
 using MIPS;
 using static System.Net.Mime.MediaTypeNames;
+using System.Diagnostics;
 
 namespace ConsoleApp98
 {
@@ -96,6 +97,7 @@ namespace ConsoleApp98
             };
            
             public static int pc = 0;
+            public static bool first_time = true;
             public static int count = 0;
             public static int newcount = 0;
             public static bool cs = false;
@@ -127,7 +129,11 @@ namespace ConsoleApp98
             public static int cur_pcb = -1;
             public static System.Timers.Timer aTimer = new System.Timers.Timer(700);
             public static System.Timers.Timer bTimer = new System.Timers.Timer(3000);
-          
+            public static Stopwatch stopWatch = new Stopwatch();
+            public static List<string> wb_ins = new List<string>();
+
+
+
 
             public static List<string> log = new List<string>();
             
@@ -138,18 +144,18 @@ namespace ConsoleApp98
             while (Globals.run)
             {
                 Globals.count++;
-                Console.WriteLine("cs ps is "+Globals.cs_pc);
+                
 
                 int pc = Globals.pc;
                 List<string> instructions = Globals.instructionList;
                 
                 if (Globals.cs)
                 {
-                    Console.WriteLine("this is it 1");
+                  
                     
                     if (Globals.cs_pc == 0)
                     {
-                        Console.WriteLine("whyyyyy");
+                       
                         Globals.b3.SignalAndWait();
                     }
 
@@ -163,16 +169,17 @@ namespace ConsoleApp98
 
 
                             List<string> instruction = new List<string>()
-                { instructions[pc], instructions[pc+1], instructions[pc+2], instructions[pc+3] };
+                { instructions[pc], instructions[pc+1], instructions[pc+2], instructions[pc+3],"cs" };
                             Globals.cs_pc += 4;
-                            Console.WriteLine("if working on " + instruction[0] + "count " + Globals.count);
+                           
+                           
 
                             Globals.b.SignalAndWait();
 
                             Globals.ifid.Push(instruction);
                             if (pc + 4 == instructions.Count)
                             {
-                                Console.WriteLine("oops i did it again");
+                                
                                 Globals.cs_pc = 0;
 
 
@@ -184,21 +191,19 @@ namespace ConsoleApp98
                         }
                     }
                     else {
-                        Console.WriteLine("this is it 2");
+                       
                         if (pc < instructions.Count)
                         {
-                            Console.WriteLine("here????");
+                           
                             Globals.newcount++;
 
-                            Console.WriteLine("pc is" + pc);
-                            Console.WriteLine("instruction" + instructions[pc]);
-                            Console.WriteLine("real instruction");
+                            
 
                          
                             List<string> instruction = new List<string>()
-                { instructions[pc], instructions[pc+1], instructions[pc+2], instructions[pc+3] };
+                { instructions[pc], instructions[pc+1], instructions[pc+2], instructions[pc+3],Globals.cur_pcb.ToString() };
                             Globals.pc += 4;
-                            Console.WriteLine("if working on " + instruction[0] + "count " + Globals.count);
+                           
 
                             Globals.b.SignalAndWait();
 
@@ -207,9 +212,7 @@ namespace ConsoleApp98
                         }
                         else
                         {
-                            Console.WriteLine("this is it 3");
-                            Console.WriteLine(Globals.cs_pc);
-                            Console.WriteLine("hellol here");
+                            
                             Globals.procs[Globals.cur_pcb].SetState("dead");
                             Thread t = new Thread(() => choose_pcb("RR", "mem"));
                             t.Start();
@@ -226,15 +229,13 @@ namespace ConsoleApp98
 
                     if (pc < instructions.Count)
                     {
-                        Console.WriteLine("this is it 4");
+                       
                         Globals.newcount++;
 
-                        Console.WriteLine("pc is" + pc);
-                        Console.WriteLine("instruction" + instructions[pc]);
-                        Console.WriteLine("real instruction");
+                       
                         if (pc + 4 == instructions.Count)
                         {
-                            Console.WriteLine("i got here");
+                           
                             Globals.procs[Globals.cur_pcb].SetState("dead");
                             Globals.bTimer.Stop();
                             Thread t = new Thread(() => choose_pcb("RR", "mem"));
@@ -245,9 +246,9 @@ namespace ConsoleApp98
 
 
                         List<string> instruction = new List<string>()
-                { instructions[pc], instructions[pc+1], instructions[pc+2], instructions[pc+3] };
+                { instructions[pc], instructions[pc+1], instructions[pc+2], instructions[pc+3] ,Globals.cur_pcb.ToString()};
                         Globals.pc += 4;
-                        Console.WriteLine("if working on " + instruction[0] + "count " + Globals.count);
+                      
 
                         Globals.b.SignalAndWait();
 
@@ -256,9 +257,9 @@ namespace ConsoleApp98
                     }
                     else
                     {
-                        Console.WriteLine("this is it 5");
-                        Console.WriteLine(Globals.pc);
-                        Console.WriteLine("hellol here");
+                        
+                        
+                       
                         Globals.procs[Globals.cur_pcb].SetState("dead");
                         choose_pcb("RR", "mem");
                         Globals.b.SignalAndWait();
@@ -279,7 +280,7 @@ namespace ConsoleApp98
                     Globals.log.Add("2");
                     List<string> instruction = Globals.ifid.Pop();
                     string op = instruction[0];
-                    Console.WriteLine("id working on " + instruction[0] + "count " + Globals.count);
+               
                     string v1 = instruction[1];
                     string v2 = instruction[2];
                     string v3 = instruction[3];
@@ -349,7 +350,7 @@ namespace ConsoleApp98
                     Globals.log.Add("3");
                     List<string> instruction = Globals.idex.Pop();
                     int result;
-                    Console.WriteLine("ex working on " + instruction[0] + "count " + Globals.count);
+                  
                     List<string> output = new List<string>();
                     switch (instruction[0])
                     {
@@ -358,20 +359,20 @@ namespace ConsoleApp98
                         case "add":
                             result = int.Parse(instruction[2]) + int.Parse(instruction[3]);
                             
-                            output = new List<string>() { instruction[0], instruction[1], result.ToString() };
+                            output = new List<string>() { instruction[0], instruction[1], result.ToString(), instruction.Last() };
                             break;
                         case "addi":
                            
                             
                             result = int.Parse(instruction[2]) + int.Parse(instruction[3]);
-                            output = new List<string>() { instruction[0], instruction[1], result.ToString() };
+                            output = new List<string>() { instruction[0], instruction[1], result.ToString(), instruction.Last() };
                             break;
                         case "nop":
-                            output = new List<string>() { instruction[0], instruction[1] };
+                            output = new List<string>() { instruction[0], instruction[1], instruction.Last() };
                             break;
                         case "sub":
                             result = int.Parse(instruction[2]) - int.Parse(instruction[3]);
-                            output = new List<string>() { instruction[0], instruction[1], result.ToString() };
+                            output = new List<string>() { instruction[0], instruction[1], result.ToString(), instruction.Last() };
                             break;
                         case "beq":
                             if (int.Parse(instruction[1]) - int.Parse(instruction[2]) == 0)
@@ -382,7 +383,7 @@ namespace ConsoleApp98
                             }
                             else
                                 instruction[1] = "not";
-                            output = new List<string>() { instruction[0], instruction[1], instruction[3] };
+                            output = new List<string>() { instruction[0], instruction[1], instruction[3], instruction.Last() };
                             break;
                         case "bne":
                             if (int.Parse(instruction[1]) - int.Parse(instruction[2]) == 0)
@@ -393,7 +394,7 @@ namespace ConsoleApp98
                             }
                             else
                                 instruction[1] = "not";
-                            output = new List<string>() { instruction[0], instruction[1], instruction[3] };
+                            output = new List<string>() { instruction[0], instruction[1], instruction[3], instruction.Last() };
                             break;
                         case "slt":
                             if (int.Parse(instruction[1]) < int.Parse(instruction[2]) )
@@ -404,26 +405,26 @@ namespace ConsoleApp98
                             }
                             else
                                 instruction[1] = "not";
-                            output = new List<string>() { instruction[0], instruction[1], instruction[3] };
+                            output = new List<string>() { instruction[0], instruction[1], instruction[3], instruction.Last() };
                             break;
                         case "lw":
                             result = int.Parse(instruction[2]) + int.Parse(instruction[3]);
-                            output = new List<string>() { instruction[0], instruction[1], result.ToString() };
+                            output = new List<string>() { instruction[0], instruction[1], result.ToString(), instruction.Last() };
                             break;
                         case "sw":
                             result = int.Parse(instruction[2]) + int.Parse(instruction[3]);
-                            output = new List<string>() { instruction[0], instruction[1], result.ToString() };
+                            output = new List<string>() { instruction[0], instruction[1], result.ToString(), instruction.Last() };
                             break;
                         case "j":
-                            output = new List<string>() { instruction[0], instruction[1] };
+                            output = new List<string>() { instruction[0], instruction[1], instruction.Last() };
                             break;
                         case "and":
                             logical binary_num = new logical(instruction[2]);
-                            output = new List<string>() { instruction[0], instruction[1], binary_num.logical_and(instruction[3]) };
+                            output = new List<string>() { instruction[0], instruction[1], binary_num.logical_and(instruction[3]), instruction.Last() };
                             break;
                         case "or":
                             logical binary_num1 = new logical(instruction[2]);
-                            output = new List<string>() { instruction[0], instruction[1], binary_num1.logical_or(instruction[3]) };
+                            output = new List<string>() { instruction[0], instruction[1], binary_num1.logical_or(instruction[3]), instruction.Last() };
                             break;
 
 
@@ -450,13 +451,13 @@ namespace ConsoleApp98
                     bool flag = false;
                     List<string> newInstruction = new List<string>();
                     List<string> instruction = Globals.exmem.Pop();
-                    Console.WriteLine("mem working on " + instruction[0] + "count " + Globals.count );
+             
                     if (instruction[0] == "lw")
                     {
                         flag = true;
                         int address = int.Parse(instruction[2]);
                         int value = Globals.ram[address];
-                        newInstruction = new List<string>() { instruction[0], instruction[1], value.ToString() };
+                        newInstruction = new List<string>() { instruction[0], instruction[1], value.ToString(), instruction.Last() };
 
                     }
 
@@ -466,7 +467,7 @@ namespace ConsoleApp98
                         int address = int.Parse(instruction[2]);
                         int value = Globals.ram[address];
                         Globals.ram[address] = int.Parse(instruction[1]);
-                        newInstruction = new List<string>() { instruction[0], instruction[1], value.ToString() };
+                        newInstruction = new List<string>() { instruction[0], instruction[1], value.ToString(), instruction.Last() };
 
                     }
 
@@ -498,8 +499,8 @@ namespace ConsoleApp98
                 {
                     Globals.log.Add("5");
                     List<string> instruction = Globals.memwb.Pop();
-                    Console.WriteLine("wb working on " + instruction[0] + "count " + Globals.count  );
                    
+
                     switch (instruction[0])
                     {
                         case "lw":
@@ -532,7 +533,7 @@ namespace ConsoleApp98
                             if (instruction[1] == "equal")
                             {
                                 Globals.b.SignalAndWait();
-                              
+
                                 Globals.pc = Globals.pc + int.Parse(instruction[2]);
                             }
                             break;
@@ -549,7 +550,7 @@ namespace ConsoleApp98
                             {
                                 Globals.b.SignalAndWait();
 
-                                Globals.registers[instruction[1]]= int.Parse(instruction[2]);
+                                Globals.registers[instruction[1]] = int.Parse(instruction[2]);
                             }
                             break;
                         case "and":
@@ -563,10 +564,16 @@ namespace ConsoleApp98
 
 
                     }
-
+                    string[] arr = { instruction[0], instruction.Last() };
+                    Globals.wb_ins = new List<string>(arr);
                 }
                 else
+                {
+                    string[] arr = { "no" };
+                    Globals.wb_ins = new List<string>(arr);
                     Globals.b.SignalAndWait();
+                }
+                    
                 Globals.b2.SignalAndWait();
             }
 
@@ -587,8 +594,11 @@ namespace ConsoleApp98
             Thread idThread = new Thread(ID);
             Thread exThread = new Thread(EX);
             Thread memThread = new Thread(MEM);
-            Thread wbThread = new Thread(WB);  
+            Thread wbThread = new Thread(WB);
+
+            Globals.stopWatch.Start();
             ifThread.Start();
+
             idThread.Start();
             exThread.Start();
             memThread.Start();
@@ -596,24 +606,26 @@ namespace ConsoleApp98
            
 
             SetTimer();
+            Thread.Sleep(600);
             
 
-           
-           
-
-            
-           
-          
 
 
-         //context switch:
-         // works with timer
-         // when timer runs out
-         // starts putting NOP instructions and making sure pc stays same until pipe are empty
-         // saves pc registers 
-         // calls function to decide next runner
-         // loads pcb
-         // starts running and timers
+
+
+
+
+
+
+
+            //context switch:
+            // works with timer
+            // when timer runs out
+            // starts putting NOP instructions and making sure pc stays same until pipe are empty
+            // saves pc registers 
+            // calls function to decide next runner
+            // loads pcb
+            // starts running and timers
 
 
         }
@@ -648,11 +660,7 @@ namespace ConsoleApp98
             Globals.cs = true;
             int next_pcb = Globals.cur_pcb + 1;
             int count = 0;
-            foreach (pcb item in Globals.procs)
-            {
-                if (item!=null)
-                    Console.WriteLine(item.GetState());
-            }
+          
             bool flag2=true;
             switch (algorithm)
             {
@@ -661,7 +669,7 @@ namespace ConsoleApp98
                     bool flag = true;
                     while (flag)
                     {
-                        Console.WriteLine("searching for pcb");
+                        
                         count++;
                         if (count > Globals.procs.Length + 2)
                         {
@@ -709,7 +717,7 @@ namespace ConsoleApp98
             }
             if (flag2)
             {
-                Console.WriteLine("found pcb " + next_pcb);
+                
                 if (load == "reg")
                 {
                     pcb_load_to_reg(next_pcb);
@@ -727,7 +735,7 @@ namespace ConsoleApp98
         {
             Globals.bTimer.Stop();
             
-            Console.WriteLine("loading to memory");
+           
             Globals.cs = true;
             int offset =  Globals.cur_pcb * 33;
             List<string> instructions=new List<string>();
@@ -742,7 +750,7 @@ namespace ConsoleApp98
             Globals.procs[Globals.cur_pcb].SetPc(Globals.pc);
             Globals.b3.SignalAndWait();
             Globals.b3.SignalAndWait();
-            Console.WriteLine("i did it");
+           
             choose_pcb("RR", "reg");
             
 
@@ -750,7 +758,7 @@ namespace ConsoleApp98
 
         public static void pcb_load_to_reg(int pcb_num)
         {
-            Console.WriteLine("loading to reg with pcb"+pcb_num);        
+                
             int offset = pcb_num * 33;
             List<string> instructions = new List<string>();
             foreach (string item in Globals.load_to_reg)
@@ -761,12 +769,9 @@ namespace ConsoleApp98
           
             Globals.cs_instructions = interpreter(instructions, Globals.re1, Globals.re2, Globals.re3);          
             Globals.instructionList = interpreter(Globals.procs[pcb_num].GetIns(), Globals.re1, Globals.re2, Globals.re3);
-            foreach (string item in Globals.instructionList)
-            {
-                Console.WriteLine(item);
-            }
+          
             Globals.pc = Globals.procs[pcb_num].GetPc();
-            Console.WriteLine("pc is "+Globals.pc);
+           
             
             Globals.b3.SignalAndWait();
             
@@ -774,8 +779,15 @@ namespace ConsoleApp98
             Globals.cur_pcb = pcb_num;
             Globals.cs = false;
 
-            Console.WriteLine("starting timer!");
-            SetTimer_cs();
+           
+            if (Globals.first_time)
+            {
+                SetTimer_cs();
+                Globals.first_time = false;
+            }
+            else
+                Globals.bTimer.Start();
+            
 
 
 
@@ -793,23 +805,70 @@ namespace ConsoleApp98
         }
         private static void OnTimedEvent(Object source, ElapsedEventArgs e)
         {
-            Console.WriteLine("again");
-            Console.WriteLine(Globals.ifid.Count);
-            Console.WriteLine(Globals.idex.Count);
-            Console.WriteLine(Globals.exmem.Count);
-            Console.WriteLine(Globals.memwb.Count);
-            Console.WriteLine("--------------");
-            
+            TimeSpan ts = Globals.stopWatch.Elapsed;
+            string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+            ts.Hours, ts.Minutes, ts.Seconds,
+            ts.Milliseconds / 10);
+
+            Console.WriteLine("RunTime " + elapsedTime);
+            if (Globals.ifid.Count != 0)
+            {
+                string ifid_ins = Globals.ifid.Peek()[0];
+                string pcb_num = Globals.ifid.Peek().Last();
+                Console.WriteLine("if worked on instruction " + ifid_ins + " pcb " + pcb_num);
+            }
+            else
+                Console.WriteLine("if was idle");
+            if (Globals.idex.Count != 0)
+            {
+                string idex_ins = Globals.idex.Peek()[0];
+                string pcb_num = Globals.idex.Peek().Last();
+                Console.WriteLine("id worked on instruction " + idex_ins + " pcb " + pcb_num);
+            }
+            else
+                Console.WriteLine("id was idle");
+            if (Globals.exmem.Count != 0)
+            {
+                string exmem_ins = Globals.exmem.Peek()[0];
+                string pcb_num = Globals.exmem.Peek().Last();
+                Console.WriteLine("ex worked on instruction " + exmem_ins + " pcb " + pcb_num);
+            }
+            else
+                Console.WriteLine("ex was idle");
+            if (Globals.memwb.Count != 0)
+            {
+                string memwb_ins = Globals.memwb.Peek()[0];
+                string pcb_num = Globals.memwb.Peek().Last();
+                Console.WriteLine("mem worked on instruction " + memwb_ins + " pcb " + pcb_num);
+            }
+            else
+                Console.WriteLine("mem was idle");
+
+            if (Globals.wb_ins[0] == "no")
+                Console.WriteLine("wb was idle");
+            else
+            {
+                Console.WriteLine("wb worked on instruction " + Globals.wb_ins[0] + " pcb " + Globals.wb_ins.Last());
+            }
+
+
+
+            Console.WriteLine("-------------------");
+
+
+
+
             if (Globals.ifid.Count + Globals.idex.Count + Globals.exmem.Count + Globals.memwb.Count != 0)
             {
                 Globals.b2.SignalAndWait();
+                
             }
 
             else
             {
                 if (Globals.run)
                 {
-                    Console.WriteLine("heloooooooooooo");
+                   
                     Globals.run = false;
                     Globals.b2.SignalAndWait();
                     Globals.aTimer.Stop();
@@ -826,7 +885,7 @@ namespace ConsoleApp98
 
         private static void SetTimer_cs()
         {
-            Console.WriteLine("setting timer");
+           
             //if (Globals.ifid.Count + Globals.idex.Count + Globals.exmem.Count + Globals.memwb.Count != 0)
             //{
             //    Globals.bTimer.Stop();
@@ -840,13 +899,13 @@ namespace ConsoleApp98
         }
         private static void OnTimedEvent_cs(Object source, ElapsedEventArgs e)
         {
-            Console.WriteLine("cs!!!");
+            
             if (Globals.run)
             {
                 choose_pcb("RR","mem");
             }
 
-          Globals.bTimer.Stop();
+          
             
         }
 
