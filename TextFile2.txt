@@ -1,7 +1,12 @@
-or $v2,$v2,$t3
-or $v2,$v2,$t3
-or $v2,$v2,$t3
-or $v2,$v2,$t3
-or $v2,$v2,$t3
-or $v2,$v2,$t3
-or $v2,$v2,$t3
+set
+$a1:10001
+$a2:10101
+$
+or $v1,$a1,$a2
+or $v1,$a1,$a2
+or $v1,$a1,$a2
+or $v1,$a1,$a2
+or $v1,$a1,$a2
+or $v1,$a1,$a2
+or $v1,$a1,$a2
+
