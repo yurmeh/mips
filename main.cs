@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Timers;
 
 namespace ConsoleApp98
@@ -14,7 +15,15 @@ namespace ConsoleApp98
     {
         static void Main(string[] args)
         {
-            MainRun(1);
+
+
+            MainRun();
+            Thread.Sleep(120000);
+   
+            /// is sw just fucked up???
+
+
+
         }
         public static List<string> interpreter(List<string> ins_list, string re1, string re2, string re3)
         {
@@ -64,6 +73,7 @@ namespace ConsoleApp98
                     }
                 }
             }
+
             return result;
         }
 
@@ -71,7 +81,7 @@ namespace ConsoleApp98
         {
             public static Dictionary<string, int> registers = new Dictionary<string, int>()
             {
-                {"$zero",0 },{"$v0",0 },{"$v1",0 },{"$a0",0 },{"$a1",0 },{"$a2",5 },{"$a3",5 }, {"$t0",5 },{"$t1",0 },{"$t2",2 },{"$t3",3 },{"$gp",0 },{"$fp",0 },{"$sp",0 },{"$ra",0 }
+                {"$zero",0 },{"$v0",0 },{"$v1",0 },{"$a0",0 },{"$a1",0 },{"$a2",0 },{"$a3",0 }, {"$t0",0 },{"$t1",0 },{"$t2",0 },{"$t3",0 },{"$gp",0 },{"$fp",0 },{"$sp",0 },{"$ra",0 }
 
             };
 
@@ -80,12 +90,12 @@ namespace ConsoleApp98
             public static int count = 0;
             public static int newcount = 0;
             public static bool cs = false;
-            public static List<string> load_to_pcb = new List<string> { "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero","addi $zero,$zero,offset","sw $v0,0($zero)", "sw $v1,1($zero)", "sw $a0,2($zero)", "sw $a1,3($zero)", "sw $a2,4($zero)", "sw $a3,5($zero)", "sw $t0,6($zero)",
-            "sw $t1,7($zero)","sw $t2,8($zero)","sw $t3,9($zero)","sw $gp,24($zero)","sw $fp,25($zero)","sw $sp,26($zero)",
-            "sw $ra,27($zero)","sub $zero,$zero,$zero"};
-            public static List<string> load_to_reg = new List<string> { "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero","addi $zero,$zero,offset","lw $v0,0($zero)", "lw $v1,1($zero)", "lw $a0,2($zero)", "lw $a1,3($zero)", "lw $a2,4($zero)", "lw $a3,5($zero)", "lw $t0,6($zero)",
-            "lw $t1,7($zero)","lw $t2,8($zero)","lw $t3,9($zero)","lw $gp,24($zero)","lw $fp,25($zero)","lw $sp,26($zero)",
-            "lw $ra,27($zero)","sub $zero,$v0,$v0"};
+            public static List<string> load_to_pcb = new List<string> { "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero","addi $zero,$zero,offset","nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero","sw $v0,1($zero)", "sw $v1,2($zero)", "sw $a0,3($zero)", "sw $a1,4($zero)", "sw $a2,5($zero)", "sw $a3,6($zero)", "sw $t0,7($zero)",
+            "sw $t1,8($zero)","sw $t2,9($zero)","sw $t3,10($zero)","sw $gp,11($zero)","sw $fp,12($zero)","sw $sp,13($zero)",
+            "sw $ra,14($zero)","sub $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero"};
+            public static List<string> load_to_reg = new List<string> { "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero","addi $zero,$zero,offset","nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero","lw $v0,1($zero)", "lw $v1,2($zero)", "lw $a0,3($zero)", "lw $a1,4($zero)", "lw $a2,5($zero)", "lw $a3,6($zero)", "lw $t0,7($zero)",
+            "lw $t1,8($zero)","lw $t2,9($zero)","lw $t3,10($zero)","lw $gp,11($zero)","lw $fp,12($zero)","lw $sp,13($zero)",
+            "lw $ra,14($zero)","sub $zero,$v0,$v0", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero" };
             public static int cs_pc = 0;
             public static List<string> cs_instructions = new List<string>();
             public static string re1 = @"(\w+) (\S+),(\S+),(\S+)"; //add sub 
@@ -103,7 +113,7 @@ namespace ConsoleApp98
             public static bool run = true;
             public static pcb[] procs = new pcb[3];
             public static int cur_pcb = -1;
-            public static System.Timers.Timer aTimer = new System.Timers.Timer(700); // cycle clock
+            public static System.Timers.Timer aTimer = new System.Timers.Timer(500); // cycle clock
             public static System.Timers.Timer bTimer = new System.Timers.Timer(3000); // cs clock
             public static Stopwatch stopWatch = new Stopwatch(); // count time
             public static List<string> wb_ins = new List<string>();
@@ -131,7 +141,7 @@ namespace ConsoleApp98
                         instructions = Globals.cs_instructions;
                         if (pc < instructions.Count)
                         {
-                            List<string> instruction = new List<string>() 
+                            List<string> instruction = new List<string>()
                             { instructions[pc], instructions[pc + 1], instructions[pc + 2], instructions[pc + 3], "cs" };
                             Globals.cs_pc += 4;
                             Globals.b.SignalAndWait();
@@ -150,13 +160,17 @@ namespace ConsoleApp98
                             Globals.newcount++;
                             List<string> instruction = new List<string>()
                             { instructions[pc], instructions[pc+1], instructions[pc+2], instructions[pc+3],Globals.cur_pcb.ToString() };
+
                             Globals.pc += 4;
                             Globals.b.SignalAndWait();
                             Globals.ifid.Push(instruction);
                         }
-                        Console.WriteLine("We need this 1!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+                        Console.WriteLine("problem!!!");
+
                         //else
                         //{
+                        //    Console.WriteLine("We need this 1!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                         //    Globals.procs[Globals.cur_pcb].SetState("dead");
                         //    Thread t = new Thread(() => choose_pcb("RR", "mem"));
                         //    t.Start();
@@ -171,11 +185,13 @@ namespace ConsoleApp98
                         Globals.newcount++;
                         if (pc + 4 == instructions.Count)
                         {
+                            Console.WriteLine("need to do this???");
                             Globals.procs[Globals.cur_pcb].SetState("dead");
                             Globals.bTimer.Stop();
                             Thread t = new Thread(() => choose_pcb("RR", "mem"));
                             t.Start();
                         }
+
 
                         List<string> instruction = new List<string>()
                         { instructions[pc], instructions[pc+1], instructions[pc+2], instructions[pc+3] ,Globals.cur_pcb.ToString()};
@@ -183,15 +199,12 @@ namespace ConsoleApp98
                         Globals.b.SignalAndWait();
                         Globals.ifid.Push(instruction);
                     }
-
-                    Console.WriteLine("We need this 1!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                    //else
-                    //{
-                    //    Globals.procs[Globals.cur_pcb].SetState("dead");
-                    //    choose_pcb("RR", "mem");
-                    //    Globals.b.SignalAndWait();
-                    //}
+                    else
+                    {
+                        Globals.b.SignalAndWait();
+                    }
                 }
+
                 Globals.b2.SignalAndWait();
             }
         }
@@ -201,12 +214,14 @@ namespace ConsoleApp98
             while (Globals.run)
             {
                 if (Globals.ifid.Count != 0)
-                {                
+                {
                     List<string> instruction = Globals.ifid.Pop();
+
                     string op = instruction[0];
                     string v1 = instruction[1];
                     string v2 = instruction[2];
                     string v3 = instruction[3];
+
                     switch (op)
                     {
                         case "add":
@@ -289,22 +304,22 @@ namespace ConsoleApp98
                             output = new List<string>() { instruction[0], instruction[1], result.ToString(), instruction.Last() };
                             break;
                         case "beq":
-                            if (int.Parse(instruction[1]) - int.Parse(instruction[2]) == 0)                           
-                                instruction[1] = "equal";                       
+                            if (int.Parse(instruction[1]) - int.Parse(instruction[2]) == 0)
+                                instruction[1] = "equal";
                             else
                                 instruction[1] = "not";
                             output = new List<string>() { instruction[0], instruction[1], instruction[3], instruction.Last() };
                             break;
                         case "bne":
-                            if (int.Parse(instruction[1]) - int.Parse(instruction[2]) == 0)                           
+                            if (int.Parse(instruction[1]) - int.Parse(instruction[2]) == 0)
                                 instruction[1] = "equal";
                             else
                                 instruction[1] = "not";
                             output = new List<string>() { instruction[0], instruction[1], instruction[3], instruction.Last() };
                             break;
                         case "slt":
-                            if (int.Parse(instruction[1]) < int.Parse(instruction[2]))                           
-                                instruction[2] = "less";                           
+                            if (int.Parse(instruction[1]) < int.Parse(instruction[2]))
+                                instruction[2] = "less";
                             else
                                 instruction[1] = "not";
                             output = new List<string>() { instruction[0], instruction[1], instruction[3], instruction.Last() };
@@ -359,14 +374,16 @@ namespace ConsoleApp98
                     {
                         flag = true;
                         int address = int.Parse(instruction[2]);
-                        int value = Globals.ram[address];
+                       
                         Globals.ram[address] = int.Parse(instruction[1]);
+                        int value = Globals.ram[address];
                         newInstruction = new List<string>() { instruction[0], instruction[1], value.ToString(), instruction.Last() };
+                        Console.WriteLine("sw " + instruction[0] + " " + instruction[1] + " " + value.ToString() + " " + instruction.Last());
                     }
 
                     Globals.b.SignalAndWait();
-                    if (flag)                   
-                        Globals.memwb.Push(newInstruction);                    
+                    if (flag)
+                        Globals.memwb.Push(newInstruction);
                     else
                         Globals.memwb.Push(instruction);
                 }
@@ -454,11 +471,12 @@ namespace ConsoleApp98
             }
         }
 
-        public static void MainRun(int cycle)
+        public static void MainRun()
         {
             string[] array = { "TextFile1.txt", "TextFile2.txt" };
             List<string> names = new List<string>(array);
             pcb_creation(file_load(names));
+
             Thread t = new Thread(() => choose_pcb("RR", "reg"));
             t.Start();
 
@@ -476,7 +494,7 @@ namespace ConsoleApp98
             memThread.Start();
             wbThread.Start();
 
-            SetTimer();           
+            SetTimer();
         }
         public static List<List<string>> file_load(List<string> file_names)
         {
@@ -487,6 +505,7 @@ namespace ConsoleApp98
                 List<string> lines2 = new List<string>(lines);
                 instructions.Add(lines2);
             }
+
             return instructions;
         }
         public static void pcb_creation(List<List<string>> instructions)
@@ -494,10 +513,32 @@ namespace ConsoleApp98
             int count = 0;
             foreach (List<string> single_pcb in instructions)
             {
-                pcb new_pcb = new pcb(single_pcb, "ready");
-                Globals.procs[count] = new_pcb;
+                if (single_pcb[0] == "set")
+                {
+
+                    List<string> reg_set = new List<string>();
+                    int index = 0;
+                    while (single_pcb[index] != "$")
+                    {
+                        reg_set.Add(single_pcb[index]);
+                        
+                        index++;
+                        
+                    }
+                    single_pcb.RemoveRange(0, index+1);
+                    
+                    pcb new_pcb = new pcb(single_pcb, "ready", reg_set, count);
+                    Globals.procs[count] = new_pcb;
+                }
+                else
+                {
+                    pcb new_pcb = new pcb(single_pcb, "ready", count);
+                    Globals.procs[count] = new_pcb;
+                }
+
                 count++;
             }
+            
         }
         public static void choose_pcb(string algorithm, string load)
         {
@@ -509,54 +550,60 @@ namespace ConsoleApp98
             switch (algorithm)
             {
                 case "RR":
-                    bool flag = true;
-                    while (flag)
+                    if (load == "reg")
                     {
-                        count++;
-                        if (count > Globals.procs.Length + 2)
+                        bool flag = true;
+                        while (flag)
                         {
-                            flag = false;
-                            flag2 = false;
-                            Globals.cs = false;                
-                        }
-                        if (Globals.procs[next_pcb] != null)
-                        {
-                            if (Globals.procs[next_pcb].GetState() == "ready")
-                                flag = false;
-                            if (Globals.cur_pcb == next_pcb)
+                            count++;
+                            if (count > Globals.procs.Length + 2)
                             {
+                                flag = false;
                                 flag2 = false;
                                 Globals.cs = false;
                             }
-                        }
-                        if (flag)
-                        {
-                            next_pcb++;
-                            if (next_pcb >= Globals.procs.Length)
+                            if (Globals.procs[next_pcb] != null)
                             {
-                                next_pcb = 0;
+                                if (Globals.procs[next_pcb].GetState() == "ready")
+                                    flag = false;
+
+                                if (Globals.cur_pcb == next_pcb)
+                                {
+                                    flag2 = false;
+                                    Globals.cs = false;
+                                }
+                            }
+                            if (flag)
+                            {
+                                next_pcb++;
+                                if (next_pcb >= Globals.procs.Length)
+                                {
+                                    next_pcb = 0;
+                                }
                             }
                         }
+                        if (flag2)
+                        {
+                            pcb_load_to_reg(next_pcb);
+                        }
+
                     }
+                    else
+                        pcb_load_to_mem(Globals.cur_pcb);
                     break;
+
                 default:
                     break;
             }
-            if (flag2)
-            {
-                if (load == "reg")
-                {
-                    pcb_load_to_reg(next_pcb);
-                }
-                else
-                    pcb_load_to_mem(next_pcb);
-            }
+
         }
         public static void pcb_load_to_mem(int pcb_num)
         {
+            
             Globals.bTimer.Stop();
             Globals.cs = true;
             int offset = Globals.cur_pcb * 33;
+            Console.WriteLine("loading to mem with offset " + offset);
             List<string> instructions = new List<string>();
             foreach (string item in Globals.load_to_pcb)
             {
@@ -567,12 +614,16 @@ namespace ConsoleApp98
             Globals.procs[Globals.cur_pcb].SetPc(Globals.pc);
             Globals.b3.SignalAndWait();
             Globals.b3.SignalAndWait();
+            Console.WriteLine("finished loading to memory");
+
             choose_pcb("RR", "reg");
         }
 
         public static void pcb_load_to_reg(int pcb_num)
         {
+        
             int offset = pcb_num * 33;
+            Console.WriteLine("loading to reg with offset " + offset);
             List<string> instructions = new List<string>();
             foreach (string item in Globals.load_to_reg)
             {
@@ -581,10 +632,13 @@ namespace ConsoleApp98
             }
 
             Globals.cs_instructions = interpreter(instructions, Globals.re1, Globals.re2, Globals.re3);
+          
             Globals.instructionList = interpreter(Globals.procs[pcb_num].GetIns(), Globals.re1, Globals.re2, Globals.re3);
             Globals.pc = Globals.procs[pcb_num].GetPc();
             Globals.b3.SignalAndWait();
             Globals.b3.SignalAndWait();
+            Console.WriteLine("finished loading to regs");
+           
             Globals.cur_pcb = pcb_num;
             Globals.cs = false;
             if (Globals.first_time)
@@ -594,6 +648,16 @@ namespace ConsoleApp98
             }
             else
                 Globals.bTimer.Start();
+        }
+        public static void end()
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                Console.WriteLine("RAM at " + i + "is " + Globals.ram[i]);
+            }
+
+
+
         }
 
         private static void SetTimer()
@@ -611,49 +675,73 @@ namespace ConsoleApp98
             string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
             ts.Hours, ts.Minutes, ts.Seconds,
             ts.Milliseconds / 10);
-            Console.WriteLine("RunTime " + elapsedTime);
+            //Console.WriteLine("RunTime " + elapsedTime);
+            string if_string = "";
+            string id_string = "";
+            string ex_string = "";
+            string mem_string = "";
+            string wb_string = "";
+            string line = "-------------------";
 
-            if (Globals.ifid.Count != 0)
-            {
-                string ifid_ins = Globals.ifid.Peek()[0];
-                string pcb_num = Globals.ifid.Peek().Last();
-                Console.WriteLine("if worked on instruction " + ifid_ins + " pcb " + pcb_num);
-            }
-            else
-                Console.WriteLine("if was idle");
-            if (Globals.idex.Count != 0)
-            {
-                string idex_ins = Globals.idex.Peek()[0];
-                string pcb_num = Globals.idex.Peek().Last();
-                Console.WriteLine("id worked on instruction " + idex_ins + " pcb " + pcb_num);
-            }
-            else
-                Console.WriteLine("id was idle");
-            if (Globals.exmem.Count != 0)
-            {
-                string exmem_ins = Globals.exmem.Peek()[0];
-                string pcb_num = Globals.exmem.Peek().Last();
-                Console.WriteLine("ex worked on instruction " + exmem_ins + " pcb " + pcb_num);
-            }
-            else
-                Console.WriteLine("ex was idle");
-            if (Globals.memwb.Count != 0)
-            {
-                string memwb_ins = Globals.memwb.Peek()[0];
-                string pcb_num = Globals.memwb.Peek().Last();
-                Console.WriteLine("mem worked on instruction " + memwb_ins + " pcb " + pcb_num);
-            }
-            else
-                Console.WriteLine("mem was idle");
+            //if (Globals.ifid.Count != 0)
+            //{
+            //    string ifid_ins = Globals.ifid.Peek()[0];
+            //    string pcb_num = Globals.ifid.Peek().Last();
+            //    if_string = "if worked on instruction " + ifid_ins + " pcb " + pcb_num;
+            //    Console.WriteLine(if_string);
+            //}
+            //else
+            //    Console.WriteLine("if was idle");
+            //if (Globals.idex.Count != 0)
+            //{
+            //    string idex_ins = Globals.idex.Peek()[0];
+            //    string pcb_num = Globals.idex.Peek().Last();
+            //    id_string = "id worked on instruction " + idex_ins + " pcb " + pcb_num;
+            //    Console.WriteLine(id_string);
+            //}
+            //else
+            //    Console.WriteLine("id was idle");
+            //if (Globals.exmem.Count != 0)
+            //{
+            //    string exmem_ins = Globals.exmem.Peek()[0];
+            //    string pcb_num = Globals.exmem.Peek().Last();
+            //    ex_string = "ex worked on instruction " + exmem_ins + " pcb " + pcb_num;
+            //    Console.WriteLine(ex_string);
+            //}
+            //else
+            //    Console.WriteLine("ex was idle");
+            //if (Globals.memwb.Count != 0)
+            //{
+            //    string memwb_ins = Globals.memwb.Peek()[0];
+            //    string pcb_num = Globals.memwb.Peek().Last();
+            //    mem_string = "mem worked on instruction " + memwb_ins + " pcb " + pcb_num;
+            //    Console.WriteLine(mem_string);
+            //}
+            //else
+            //    Console.WriteLine("mem was idle");
 
-            if (Globals.wb_ins[0] == "no")
-                Console.WriteLine("wb was idle");
-            else
-            {
-                Console.WriteLine("wb worked on instruction " + Globals.wb_ins[0] + " pcb " + Globals.wb_ins.Last());
-            }
+            //if (Globals.wb_ins[0] == "no")
+            //{
+            //    wb_string = "wb was idle";
+            //    Console.WriteLine(wb_string);
+            //}
+            //else
+            //{
+            //    wb_string = "wb worked on instruction " + Globals.wb_ins[0] + " pcb " + Globals.wb_ins.Last();
+            //    Console.WriteLine(wb_string);
+            //}
 
-            Console.WriteLine("-------------------");
+            //Console.WriteLine(line);
+            Task t = Task.Factory.StartNew(() =>
+            {
+                string readText = File.ReadAllText("log.txt");
+                using (StreamWriter writer = new StreamWriter("log.txt"))
+                {
+
+                    writer.WriteLine(readText + Environment.NewLine + if_string + Environment.NewLine + id_string + Environment.NewLine + ex_string + Environment.NewLine + mem_string + Environment.NewLine + wb_string + Environment.NewLine + line + Environment.NewLine);
+
+                }
+            });
 
 
             if (Globals.ifid.Count + Globals.idex.Count + Globals.exmem.Count + Globals.memwb.Count != 0)
@@ -667,11 +755,13 @@ namespace ConsoleApp98
                 {
 
                     Globals.run = false;
+                    end();
                     Globals.b2.SignalAndWait();
                     Globals.aTimer.Stop();
                     Globals.aTimer.Dispose();
                     Globals.bTimer.Stop();
                     Globals.bTimer.Dispose();
+                    
                 }
             }
         }
@@ -690,6 +780,15 @@ namespace ConsoleApp98
             {
                 choose_pcb("RR", "mem");
             }
+        }
+        public static void PrintRegs()
+        {
+            string first = String.Format("$v0:{0} $v1:{1}", Globals.registers["$v0"], Globals.registers["$v1"]);
+            string second = String.Format("$a0:{0} $a1:{1} $a2:{2} $a3:{3}", Globals.registers["$a0"], Globals.registers["$a1"], Globals.registers["$a2"], Globals.registers["$a3"]);
+            string third = String.Format("$t0:{0} $t1:{1} $t2:{2} $t3:{3}", Globals.registers["$t0"], Globals.registers["$t1"], Globals.registers["$t2"], Globals.registers["$t3"]);
+            Console.WriteLine(first);
+            Console.WriteLine(second);
+            Console.WriteLine(third);
         }
     }
 }
