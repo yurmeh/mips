@@ -1,7 +1,11 @@
-﻿and $v1,$t2,$t3
-and $v2,$t2,$t3
-and $v2,$t2,$t3
-and $v2,$t2,$t3
-and $v2,$t2,$t3
-and $v2,$t2,$t3
-and $v2,$t2,$t3
+set
+$t2:111010
+$t3:111000
+$
+and $v1,$t2,$t3
+and $v0,$t2,$t3
+and $v0,$t2,$t3
+and $v0,$t2,$t3
+and $v0,$t2,$t3
+and $v0,$t2,$t3
+and $v0,$t2,$t3
