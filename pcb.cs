@@ -1,34 +1,78 @@
-using System;
 using System.Collections.Generic;
-using System.Text;
+using static ConsoleApp98.Program;
 
 namespace MIPS
 {
     internal class pcb
     {
-        private  Dictionary<string, int> registers;
+        private Dictionary<string, int> regs;
         private int pc;
         private int size;
         private string state;
-        
-        private  List<string> instructionList;
-        private  int[] ram = new int[100];
-        public pcb(List<string> instructions,string state)
+        private int id;
+
+        private List<string> instructionList;
+        private int[] ram = new int[100];
+        public pcb(List<string> instructions, string state, int id)
         {
             this.instructionList = instructions;
             this.pc = 0;
             this.state = state;
-            this.registers= new Dictionary<string, int>()
+            this.id = id;
+            this.regs = new Dictionary<string, int>()
             {
-                {"$zero",0 },{"$v0",0 },{"$v1",0 },{"$a0",0 },{"$a1",0 },{"$a2",5 },{"$a3",5 }, {"$t0",5 },{"$t1",0 },{"$t2",2 },{"$t3",3 },{"$t4",0 },{"$t5",0 },{"$t6",1 },{"$t7",2},
-                {"$s0",0 },{"$s1",0 },{"$s2",0 },{"$s3",0 },{"$s4",0 },{"$s5",0 },{"$s6",0 },{"$s7",0 },{"$t8",0 },{"$t9",0 },{"$gp",0 },{"$fp",0 },{"$sp",0 },{"$ra",0 }
+                {"$zero",0 },{"$v0",0 },{"$v1",0 },{"$a0",0 },{"$a1",0 },{"$a2",0},{"$a3",0 }, {"$t0",0 },{"$t1",0 },{"$t2",0 },{"$t3",0 },{"$gp",0 },{"$fp",0 },{"$sp",0 },{"$ra",0 }
 
             };
+            this.id = id;
+            int offset = id * 33;
+            int index = offset;
+            foreach (int item in this.regs.Values)
+            {
+                Globals.ram[offset] = item;
+                offset++;
+            }
+            this.size = instructions.Count;
         }
-        
+        public pcb(List<string> instructions, string state,List<string> settings,int id)
+        {
+            this.id = id; 
+            this.instructionList = instructions;
+            this.pc = 0;
+            this.state = state;
+            this.regs = new Dictionary<string, int>()
+            {
+                {"$zero",0 },{"$v0",0 },{"$v1",0 },{"$a0",0 },{"$a1",0 },{"$a2",0},{"$a3",0 }, {"$t0",0 },{"$t1",0 },{"$t2",0 },{"$t3",0 },{"$gp",0 },{"$fp",0 },{"$sp",0 },{"$ra",0 }
+
+            };
+            string name = "";
+            string value = "";
+            foreach (string pair in settings)
+            {
+                if (pair != "set")
+                {
+                    string[] words = pair.Split(':');                    
+                    this.regs[words[0]] = int.Parse(words[1]);                  
+                }            
+            }
+          
+            int offset = id * 33;
+            int index = offset;
+            foreach (int item in this.regs.Values)
+            {
+                Globals.ram[offset] = item;
+                offset++;
+            }
+            this.size = instructions.Count;
+        }
+
         public string GetState()
         {
             return this.state;
+        }
+        public int GetSize()
+        {
+            return this.size;
         }
         public List<string> GetIns()
         {
