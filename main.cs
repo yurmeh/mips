@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.Intrinsics.X86;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,13 +16,12 @@ namespace ConsoleApp98
     class Program
     {
         static void Main(string[] args)
-        {
+        {   
 
 
             MainRun();
             Thread.Sleep(120000);
-   
-            /// is sw just fucked up???
+            /// something fucked up with finishing up when using srt
 
 
 
@@ -118,6 +119,7 @@ namespace ConsoleApp98
             public static Stopwatch stopWatch = new Stopwatch(); // count time
             public static List<string> wb_ins = new List<string>();
             public static List<string> log = new List<string>();
+            public static string alg = "fcfs";
         }
 
         public static void IF()
@@ -188,7 +190,7 @@ namespace ConsoleApp98
                             Console.WriteLine("need to do this???");
                             Globals.procs[Globals.cur_pcb].SetState("dead");
                             Globals.bTimer.Stop();
-                            Thread t = new Thread(() => choose_pcb("RR", "mem"));
+                            Thread t = new Thread(() => choose_pcb(Globals.alg, "mem"));
                             t.Start();
                         }
 
@@ -359,6 +361,7 @@ namespace ConsoleApp98
             {
                 if (Globals.exmem.Count != 0)
                 {
+                    Console.WriteLine("are you here");
                     bool flag = false;
                     List<string> newInstruction = new List<string>();
                     List<string> instruction = Globals.exmem.Pop();
@@ -399,6 +402,8 @@ namespace ConsoleApp98
             {
                 if (Globals.memwb.Count != 0)
                 {
+
+                    Console.WriteLine("stop it!!!!");
                     List<string> instruction = Globals.memwb.Pop();
                     switch (instruction[0])
                     {
@@ -473,11 +478,13 @@ namespace ConsoleApp98
 
         public static void MainRun()
         {
+            System.IO.File.WriteAllText("log.txt", string.Empty);
+
             string[] array = { "TextFile1.txt", "TextFile2.txt" };
             List<string> names = new List<string>(array);
             pcb_creation(file_load(names));
 
-            Thread t = new Thread(() => choose_pcb("RR", "reg"));
+            Thread t = new Thread(() => choose_pcb("SRT", "reg"));
             t.Start();
 
             Thread ifThread = new Thread(IF);
@@ -542,6 +549,7 @@ namespace ConsoleApp98
         }
         public static void choose_pcb(string algorithm, string load)
         {
+            Globals.alg = algorithm;
             Globals.cs = true;
             int next_pcb = Globals.cur_pcb + 1;
             int count = 0;
@@ -584,20 +592,105 @@ namespace ConsoleApp98
                         }
                         if (flag2)
                         {
-                            pcb_load_to_reg(next_pcb);
+                            pcb_load_to_reg(next_pcb,"RR");
                         }
 
                     }
                     else
-                        pcb_load_to_mem(Globals.cur_pcb);
+                        pcb_load_to_mem(Globals.cur_pcb,algorithm);
+                    break;
+                case "fcfs":
+                    if (load == "reg")
+                    {
+                        bool flag = true;
+                        while (flag)
+                        {
+                            count++;
+                            if (count > Globals.procs.Length + 2)
+                            {
+                                flag = false;
+                                flag2 = false;
+                                Globals.cs = false;
+                            }
+                            if (Globals.procs[next_pcb] != null)
+                            {
+                                if (Globals.procs[next_pcb].GetState() == "ready")
+                                    flag = false;
+
+                                if (Globals.cur_pcb == next_pcb)
+                                {
+                                    flag2 = false;
+                                    Globals.cs = false;
+                                }
+                            }
+                            if (flag)
+                            {
+                                next_pcb++;
+                                if (next_pcb >= Globals.procs.Length)
+                                {
+                                    next_pcb = 0;
+                                }
+                            }
+                        }
+                        if (flag2)
+                        {
+                            pcb_load_to_reg(next_pcb,"fcfs");
+                        }
+
+                    }
+                    else
+                        pcb_load_to_mem(Globals.cur_pcb,algorithm);
                     break;
 
                 default:
                     break;
+                case "SRT":
+                    if (load == "reg")
+                    {
+                        
+                        int current = 0;                       
+                        int max_index = 0;
+                        int max_value = Globals.procs[0].GetSize()- Globals.procs[0].GetPc();
+                        int size = 0;
+                        Console.WriteLine("max value "+max_value);
+                        for (int i = 1; i < Globals.procs.Length; i++)
+                        {
+                            if (Globals.procs[i]!=null)
+                            {
+                                Console.WriteLine("hey");
+                                if (Globals.procs[i].GetState() != "dead")
+                                {
+                                    Console.WriteLine("hello");
+
+                                    size= Globals.procs[i].GetSize() - Globals.procs[i].GetPc();
+                                    Console.WriteLine(size);
+                                    if (size>max_value)
+                                    {
+                                        max_value = size;
+                                        max_index = i;
+                                    }
+                                }
+                            }
+                        }
+                        if (Globals.procs[max_index].GetSize() - Globals.procs[max_index].GetPc()>0)
+                        {
+                            Console.WriteLine("yep");
+                            pcb_load_to_reg(max_index, "SRT");
+                        }
+                        else
+                            Console.WriteLine("boolbool");
+                        
+
+                    }
+                    else
+                        pcb_load_to_mem(Globals.cur_pcb, algorithm);
+                    break;
+
             }
 
+
         }
-        public static void pcb_load_to_mem(int pcb_num)
+        public static void pcb_load_to_mem(int pcb_num,string alg)
         {
             
             Globals.bTimer.Stop();
@@ -616,10 +709,10 @@ namespace ConsoleApp98
             Globals.b3.SignalAndWait();
             Console.WriteLine("finished loading to memory");
 
-            choose_pcb("RR", "reg");
+            choose_pcb(alg, "reg");
         }
 
-        public static void pcb_load_to_reg(int pcb_num)
+        public static void pcb_load_to_reg(int pcb_num, string alg)
         {
         
             int offset = pcb_num * 33;
@@ -641,13 +734,17 @@ namespace ConsoleApp98
            
             Globals.cur_pcb = pcb_num;
             Globals.cs = false;
-            if (Globals.first_time)
+            if (alg == "RR")
             {
-                SetTimer_cs();
-                Globals.first_time = false;
+                if (Globals.first_time)
+                {
+                    SetTimer_cs();
+                    Globals.first_time = false;
+                }
+                else
+                    Globals.bTimer.Start();
             }
-            else
-                Globals.bTimer.Start();
+            
         }
         public static void end()
         {
@@ -675,7 +772,7 @@ namespace ConsoleApp98
             string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
             ts.Hours, ts.Minutes, ts.Seconds,
             ts.Milliseconds / 10);
-            //Console.WriteLine("RunTime " + elapsedTime);
+            Console.WriteLine("RunTime " + elapsedTime);
             string if_string = "";
             string id_string = "";
             string ex_string = "";
@@ -683,65 +780,72 @@ namespace ConsoleApp98
             string wb_string = "";
             string line = "-------------------";
 
-            //if (Globals.ifid.Count != 0)
-            //{
-            //    string ifid_ins = Globals.ifid.Peek()[0];
-            //    string pcb_num = Globals.ifid.Peek().Last();
-            //    if_string = "if worked on instruction " + ifid_ins + " pcb " + pcb_num;
-            //    Console.WriteLine(if_string);
-            //}
-            //else
-            //    Console.WriteLine("if was idle");
-            //if (Globals.idex.Count != 0)
-            //{
-            //    string idex_ins = Globals.idex.Peek()[0];
-            //    string pcb_num = Globals.idex.Peek().Last();
-            //    id_string = "id worked on instruction " + idex_ins + " pcb " + pcb_num;
-            //    Console.WriteLine(id_string);
-            //}
-            //else
-            //    Console.WriteLine("id was idle");
-            //if (Globals.exmem.Count != 0)
-            //{
-            //    string exmem_ins = Globals.exmem.Peek()[0];
-            //    string pcb_num = Globals.exmem.Peek().Last();
-            //    ex_string = "ex worked on instruction " + exmem_ins + " pcb " + pcb_num;
-            //    Console.WriteLine(ex_string);
-            //}
-            //else
-            //    Console.WriteLine("ex was idle");
-            //if (Globals.memwb.Count != 0)
-            //{
-            //    string memwb_ins = Globals.memwb.Peek()[0];
-            //    string pcb_num = Globals.memwb.Peek().Last();
-            //    mem_string = "mem worked on instruction " + memwb_ins + " pcb " + pcb_num;
-            //    Console.WriteLine(mem_string);
-            //}
-            //else
-            //    Console.WriteLine("mem was idle");
-
-            //if (Globals.wb_ins[0] == "no")
-            //{
-            //    wb_string = "wb was idle";
-            //    Console.WriteLine(wb_string);
-            //}
-            //else
-            //{
-            //    wb_string = "wb worked on instruction " + Globals.wb_ins[0] + " pcb " + Globals.wb_ins.Last();
-            //    Console.WriteLine(wb_string);
-            //}
-
-            //Console.WriteLine(line);
-            Task t = Task.Factory.StartNew(() =>
+            if (Globals.ifid.Count != 0)
             {
-                string readText = File.ReadAllText("log.txt");
-                using (StreamWriter writer = new StreamWriter("log.txt"))
-                {
+                string ifid_ins = Globals.ifid.Peek()[0];
+                string pcb_num = Globals.ifid.Peek().Last();
+                if_string = "if worked on instruction " + ifid_ins + " pcb " + pcb_num;
+                
+            }
+            else
+                if_string="if was idle";
+            Console.WriteLine(if_string);
+            if (Globals.idex.Count != 0)
+            {
+                string idex_ins = Globals.idex.Peek()[0];
+                string pcb_num = Globals.idex.Peek().Last();
+                id_string = "id worked on instruction " + idex_ins + " pcb " + pcb_num;
+                
+            }
+            else
+                id_string = "id was idle";
+            Console.WriteLine(id_string);
+            if (Globals.exmem.Count != 0)
+            {
+                string exmem_ins = Globals.exmem.Peek()[0];
+                string pcb_num = Globals.exmem.Peek().Last();
+                ex_string = "ex worked on instruction " + exmem_ins + " pcb " + pcb_num;
+                
+            }
+            else
+                ex_string = "ex was idle";
+            Console.WriteLine(ex_string);
+            if (Globals.memwb.Count != 0)
+            {
+                string memwb_ins = Globals.memwb.Peek()[0];
+                string pcb_num = Globals.memwb.Peek().Last();
+                mem_string = "mem worked on instruction " + memwb_ins + " pcb " + pcb_num;
+                
+            }
+            else
+                mem_string = "mem was idle";
+            Console.WriteLine(mem_string);
+            if (Globals.wb_ins[0] == "no")
+            {
+                wb_string = "wb was idle";              
+            }
+            else
+            {
+                wb_string = "wb worked on instruction " + Globals.wb_ins[0] + " pcb " + Globals.wb_ins.Last();             
+            }
+            Console.WriteLine(wb_string);
 
-                    writer.WriteLine(readText + Environment.NewLine + if_string + Environment.NewLine + id_string + Environment.NewLine + ex_string + Environment.NewLine + mem_string + Environment.NewLine + wb_string + Environment.NewLine + line + Environment.NewLine);
+            Console.WriteLine(line);
+            Action<object> action = (object obj) =>
+            {
+               
+                string[] readText = File.ReadAllLines(obj.ToString(), Encoding.UTF8);
+                string[] newText = new string[] { if_string, id_string, ex_string, mem_string, wb_string,line };
+                string[] combined = readText.Concat(newText).ToArray();
+                File.WriteAllLines(obj.ToString(), combined, Encoding.UTF8);
+            };
 
-                }
-            });
+            // Create a task but do not start it.
+            Task t1 = new Task(action, "log.txt");
+
+        
+            t1.Start();
+       
 
 
             if (Globals.ifid.Count + Globals.idex.Count + Globals.exmem.Count + Globals.memwb.Count != 0)
@@ -753,15 +857,16 @@ namespace ConsoleApp98
             {
                 if (Globals.run)
                 {
-
                     Globals.run = false;
-                    end();
-                    Globals.b2.SignalAndWait();
                     Globals.aTimer.Stop();
+                    end();
+
+                    Globals.b2.SignalAndWait();
+                   
                     Globals.aTimer.Dispose();
                     Globals.bTimer.Stop();
                     Globals.bTimer.Dispose();
-                    
+
                 }
             }
         }
