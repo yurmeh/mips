@@ -18,7 +18,7 @@ namespace MIPS
         static void Main(string[] args)
         {
 
-
+           
             MainRun();
             Thread.Sleep(120000);
             /// something fucked up with finishing up when using srt
@@ -124,6 +124,7 @@ namespace MIPS
 
         public static void IF()
         {
+            Console.WriteLine("if");
 
             while (Globals.run)
             {
@@ -153,7 +154,7 @@ namespace MIPS
                             {
                                 Globals.cs_pc = 0;
                                 Globals.b3.SignalAndWait();
-                                Console.WriteLine("pee pee");
+                               
                             }
                         }
                     }
@@ -170,7 +171,7 @@ namespace MIPS
                             Globals.ifid.Push(instruction);
                         }
 
-                        Console.WriteLine("problem!!!");
+                     
 
                         //else
                         //{
@@ -189,7 +190,7 @@ namespace MIPS
                         Globals.newcount++;
                         if (pc + 4 == instructions.Count)
                         {
-                            Console.WriteLine("need to do this???");
+                         
                             Globals.procs[Globals.cur_pcb].SetState("dead");
                             Globals.bTimer.Stop();
                             Thread t = new Thread(() => choose_pcb(Globals.alg, "mem"));
@@ -208,13 +209,14 @@ namespace MIPS
                         Globals.b.SignalAndWait();
                     }
                 }
-                Console.WriteLine("if did b2");
+            
                 Globals.b2.SignalAndWait();
             }
         }
 
         public static void ID()
         {
+            Console.WriteLine("id");
             while (Globals.run)
             {
                 if (Globals.ifid.Count != 0)
@@ -277,13 +279,14 @@ namespace MIPS
                 }
                 else
                     Globals.b.SignalAndWait();
-                Console.WriteLine("id did b2");
+              
                 Globals.b2.SignalAndWait();
             }
         }
 
         public static void EX()
         {
+            Console.WriteLine("ex");
             while (Globals.run)
             {
                 if (Globals.idex.Count != 0)
@@ -354,18 +357,19 @@ namespace MIPS
                 }
                 else
                     Globals.b.SignalAndWait();
-                Console.WriteLine("ex did b2");
+               
                 Globals.b2.SignalAndWait();
             }
         }
 
         public static void MEM()
         {
+            Console.WriteLine("mem");
             while (Globals.run)
             {
                 if (Globals.exmem.Count != 0)
                 {
-                    Console.WriteLine("are you here");
+                   
                     bool flag = false;
                     List<string> newInstruction = new List<string>();
                     List<string> instruction = Globals.exmem.Pop();
@@ -385,7 +389,7 @@ namespace MIPS
                         Globals.ram[address] = int.Parse(instruction[1]);
                         int value = Globals.ram[address];
                         newInstruction = new List<string>() { instruction[0], instruction[1], value.ToString(), instruction.Last() };
-                        Console.WriteLine("sw " + instruction[0] + " " + instruction[1] + " " + value.ToString() + " " + instruction.Last());
+                       
                     }
 
                     Globals.b.SignalAndWait();
@@ -396,19 +400,20 @@ namespace MIPS
                 }
                 else
                     Globals.b.SignalAndWait();
-                Console.WriteLine("mem did b2");
+              
                 Globals.b2.SignalAndWait();
             }
         }
 
         public static void WB()
         {
+            Console.WriteLine("wb");
             while (Globals.run)
             {
                 if (Globals.memwb.Count != 0)
                 {
 
-                    Console.WriteLine("stop it!!!!");
+                 
                     List<string> instruction = Globals.memwb.Pop();
                     switch (instruction[0])
                     {
@@ -477,7 +482,7 @@ namespace MIPS
                     Globals.wb_ins = new List<string>(arr);
                     Globals.b.SignalAndWait();
                 }
-                Console.WriteLine("wb did b2");
+            
                 Globals.b2.SignalAndWait();
             }
         }
@@ -555,6 +560,7 @@ namespace MIPS
         }
         public static void choose_pcb(string algorithm, string load)
         {
+            Console.WriteLine("choose pcb");
             Globals.alg = algorithm;
             Globals.cs = true;
             int next_pcb = Globals.cur_pcb + 1;
@@ -655,18 +661,18 @@ namespace MIPS
                         int max_index = 0;
                         int max_value = Globals.procs[0].GetSize() - Globals.procs[0].GetPc();
                         int size = 0;
-                        Console.WriteLine("max value " + max_value);
+                       
                         for (int i = 1; i < Globals.procs.Length; i++)
                         {
                             if (Globals.procs[i] != null)
                             {
-                                Console.WriteLine("hey");
+                               
                                 if (Globals.procs[i].GetState() != "dead")
                                 {
-                                    Console.WriteLine("hello");
+                                   
 
                                     size = Globals.procs[i].GetSize() - Globals.procs[i].GetPc();
-                                    Console.WriteLine(size);
+                                
                                     if (size > max_value)
                                     {
                                         max_value = size;
@@ -677,7 +683,7 @@ namespace MIPS
                         }
                         if (Globals.procs[max_index].GetSize() - Globals.procs[max_index].GetPc() > 0)
                         {
-                            Console.WriteLine("yep");
+                           
                             pcb_load_to_reg(max_index, "srt");
                         }
                         else
@@ -690,7 +696,7 @@ namespace MIPS
                     break;
                 default:
                     break;
-               
+
 
             }
 
@@ -774,6 +780,7 @@ namespace MIPS
         }
         private static void OnTimedEvent(Object source, ElapsedEventArgs e)
         {
+            Console.WriteLine("event");
             TimeSpan ts = Globals.stopWatch.Elapsed;
             string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
             ts.Hours, ts.Minutes, ts.Seconds,
@@ -865,17 +872,13 @@ namespace MIPS
                 {
                     Globals.run = false;
                     Globals.aTimer.Stop();
-                    Console.WriteLine("1");
                     end();
-                    Console.WriteLine("2");
                     Globals.b2.SignalAndWait();
-                    Console.WriteLine("3");
                     Globals.aTimer.Dispose();
-                    Console.WriteLine("4");
                     Globals.bTimer.Stop();
-                    Console.WriteLine("5");
                     Globals.bTimer.Dispose();
-                    Console.WriteLine("6");
+                  
+
 
                 }
             }
@@ -883,6 +886,7 @@ namespace MIPS
 
         private static void SetTimer_cs()
         {
+            Console.WriteLine("set timer cs");
             Globals.bTimer.Start();
             // Hook up the Elapsed event for the timer.
             Globals.bTimer.Elapsed += OnTimedEvent_cs;
@@ -891,6 +895,7 @@ namespace MIPS
         }
         private static void OnTimedEvent_cs(Object source, ElapsedEventArgs e)
         {
+            Console.WriteLine("event cs");
             if (Globals.run)
             {
                 choose_pcb("RR", "mem");
