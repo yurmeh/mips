@@ -18,10 +18,10 @@ namespace MIPS
         static void Main(string[] args)
         {
 
-           
+
             MainRun();
-            Thread.Sleep(120000);
-            /// something fucked up with finishing up when using srt
+        
+            
 
 
 
@@ -124,7 +124,7 @@ namespace MIPS
 
         public static void IF()
         {
-            Console.WriteLine("if");
+            
 
             while (Globals.run)
             {
@@ -154,7 +154,7 @@ namespace MIPS
                             {
                                 Globals.cs_pc = 0;
                                 Globals.b3.SignalAndWait();
-                               
+
                             }
                         }
                     }
@@ -171,7 +171,7 @@ namespace MIPS
                             Globals.ifid.Push(instruction);
                         }
 
-                     
+
 
                         //else
                         //{
@@ -190,7 +190,7 @@ namespace MIPS
                         Globals.newcount++;
                         if (pc + 4 == instructions.Count)
                         {
-                         
+
                             Globals.procs[Globals.cur_pcb].SetState("dead");
                             Globals.bTimer.Stop();
                             Thread t = new Thread(() => choose_pcb(Globals.alg, "mem"));
@@ -209,14 +209,14 @@ namespace MIPS
                         Globals.b.SignalAndWait();
                     }
                 }
-            
+
                 Globals.b2.SignalAndWait();
             }
         }
 
         public static void ID()
         {
-            Console.WriteLine("id");
+        
             while (Globals.run)
             {
                 if (Globals.ifid.Count != 0)
@@ -279,14 +279,14 @@ namespace MIPS
                 }
                 else
                     Globals.b.SignalAndWait();
-              
+
                 Globals.b2.SignalAndWait();
             }
         }
 
         public static void EX()
         {
-            Console.WriteLine("ex");
+           
             while (Globals.run)
             {
                 if (Globals.idex.Count != 0)
@@ -357,19 +357,19 @@ namespace MIPS
                 }
                 else
                     Globals.b.SignalAndWait();
-               
+
                 Globals.b2.SignalAndWait();
             }
         }
 
         public static void MEM()
         {
-            Console.WriteLine("mem");
+         
             while (Globals.run)
             {
                 if (Globals.exmem.Count != 0)
                 {
-                   
+
                     bool flag = false;
                     List<string> newInstruction = new List<string>();
                     List<string> instruction = Globals.exmem.Pop();
@@ -389,7 +389,7 @@ namespace MIPS
                         Globals.ram[address] = int.Parse(instruction[1]);
                         int value = Globals.ram[address];
                         newInstruction = new List<string>() { instruction[0], instruction[1], value.ToString(), instruction.Last() };
-                       
+
                     }
 
                     Globals.b.SignalAndWait();
@@ -400,20 +400,20 @@ namespace MIPS
                 }
                 else
                     Globals.b.SignalAndWait();
-              
+
                 Globals.b2.SignalAndWait();
             }
         }
 
         public static void WB()
         {
-            Console.WriteLine("wb");
+          
             while (Globals.run)
             {
                 if (Globals.memwb.Count != 0)
                 {
 
-                 
+
                     List<string> instruction = Globals.memwb.Pop();
                     switch (instruction[0])
                     {
@@ -482,7 +482,7 @@ namespace MIPS
                     Globals.wb_ins = new List<string>(arr);
                     Globals.b.SignalAndWait();
                 }
-            
+
                 Globals.b2.SignalAndWait();
             }
         }
@@ -495,7 +495,7 @@ namespace MIPS
             List<string> names = new List<string>(array);
             pcb_creation(file_load(names));
 
-            Thread t = new Thread(() => choose_pcb("srt", "reg"));
+            Thread t = new Thread(() => choose_pcb("rr", "reg"));
             t.Start();
 
             Thread ifThread = new Thread(IF);
@@ -560,7 +560,7 @@ namespace MIPS
         }
         public static void choose_pcb(string algorithm, string load)
         {
-            Console.WriteLine("choose pcb");
+          
             Globals.alg = algorithm;
             Globals.cs = true;
             int next_pcb = Globals.cur_pcb + 1;
@@ -569,7 +569,7 @@ namespace MIPS
 
             switch (algorithm)
             {
-                case "RR":
+                case "rr":
                     if (load == "reg")
                     {
                         bool flag = true;
@@ -604,7 +604,7 @@ namespace MIPS
                         }
                         if (flag2)
                         {
-                            pcb_load_to_reg(next_pcb, "RR");
+                            pcb_load_to_reg(next_pcb, "rr");
                         }
 
                     }
@@ -655,24 +655,22 @@ namespace MIPS
                     break;
                 case "srt":
                     if (load == "reg")
-                    {
-
-                        int current = 0;
+                    {                     
                         int max_index = 0;
                         int max_value = Globals.procs[0].GetSize() - Globals.procs[0].GetPc();
                         int size = 0;
-                       
+
                         for (int i = 1; i < Globals.procs.Length; i++)
                         {
                             if (Globals.procs[i] != null)
                             {
-                               
+
                                 if (Globals.procs[i].GetState() != "dead")
                                 {
-                                   
+
 
                                     size = Globals.procs[i].GetSize() - Globals.procs[i].GetPc();
-                                
+
                                     if (size > max_value)
                                     {
                                         max_value = size;
@@ -683,7 +681,7 @@ namespace MIPS
                         }
                         if (Globals.procs[max_index].GetSize() - Globals.procs[max_index].GetPc() > 0)
                         {
-                           
+
                             pcb_load_to_reg(max_index, "srt");
                         }
                         else
@@ -746,7 +744,7 @@ namespace MIPS
 
             Globals.cur_pcb = pcb_num;
             Globals.cs = false;
-            if (alg == "RR")
+            if (alg == "rr")
             {
                 if (Globals.first_time)
                 {
@@ -780,7 +778,7 @@ namespace MIPS
         }
         private static void OnTimedEvent(Object source, ElapsedEventArgs e)
         {
-            Console.WriteLine("event");
+           
             TimeSpan ts = Globals.stopWatch.Elapsed;
             string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
             ts.Hours, ts.Minutes, ts.Seconds,
@@ -877,7 +875,7 @@ namespace MIPS
                     Globals.aTimer.Dispose();
                     Globals.bTimer.Stop();
                     Globals.bTimer.Dispose();
-                  
+
 
 
                 }
@@ -898,7 +896,7 @@ namespace MIPS
             Console.WriteLine("event cs");
             if (Globals.run)
             {
-                choose_pcb("RR", "mem");
+                choose_pcb("rr", "mem");
             }
         }
         public static void PrintRegs()
