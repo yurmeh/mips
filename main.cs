@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using static MIPS.Program;
 
 namespace MIPS
 {
@@ -20,7 +21,17 @@ namespace MIPS
 
 
             MainRun();
-        
+        // queue with instructions in ex mem wb with all the params
+        /// before decode starts it checks for data hazards
+        /// if forwarding possible forward
+        /// if not stall
+        /// now how do i od this??
+        /// for stall
+        /// push nop 
+        /// create a database of stalled instructionns in decode part
+        /// for forwarding--- if i need a forward i change a global variable to mean what i need
+        /// use barrier to communicate with ex and mem what i need 
+        /// another barrier after the send data 
             
 
 
@@ -91,12 +102,12 @@ namespace MIPS
             public static int count = 0;
             public static int newcount = 0;
             public static bool cs = false;
-            public static List<string> load_to_pcb = new List<string> { "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero","addi $zero,$zero,offset","nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero","sw $v0,1($zero)", "sw $v1,2($zero)", "sw $a0,3($zero)", "sw $a1,4($zero)", "sw $a2,5($zero)", "sw $a3,6($zero)", "sw $t0,7($zero)",
+            public static List<string> load_to_pcb = new List<string> { "nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop","addi $zero,$zero,offset","nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop","sw $v0,1($zero)", "sw $v1,2($zero)", "sw $a0,3($zero)", "sw $a1,4($zero)", "sw $a2,5($zero)", "sw $a3,6($zero)", "sw $t0,7($zero)",
             "sw $t1,8($zero)","sw $t2,9($zero)","sw $t3,10($zero)","sw $gp,11($zero)","sw $fp,12($zero)","sw $sp,13($zero)",
-            "sw $ra,14($zero)","sub $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero"};
-            public static List<string> load_to_reg = new List<string> { "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero","addi $zero,$zero,offset","nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero","lw $v0,1($zero)", "lw $v1,2($zero)", "lw $a0,3($zero)", "lw $a1,4($zero)", "lw $a2,5($zero)", "lw $a3,6($zero)", "lw $t0,7($zero)",
+            "sw $ra,14($zero)","sub $zero,$zero,$zero", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop"};
+            public static List<string> load_to_reg = new List<string> { "nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop","addi $zero,$zero,offset","nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop","lw $v0,1($zero)", "lw $v1,2($zero)", "lw $a0,3($zero)", "lw $a1,4($zero)", "lw $a2,5($zero)", "lw $a3,6($zero)", "lw $t0,7($zero)",
             "lw $t1,8($zero)","lw $t2,9($zero)","lw $t3,10($zero)","lw $gp,11($zero)","lw $fp,12($zero)","lw $sp,13($zero)",
-            "lw $ra,14($zero)","sub $zero,$v0,$v0", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero", "nop $zero,$zero,$zero" };
+            "lw $ra,14($zero)","sub $zero,$v0,$v0", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $nop,$nop,$nop", "nop $zero,$zero,$zero" };
             public static int cs_pc = 0;
             public static List<string> cs_instructions = new List<string>();
             public static string re1 = @"(\w+) (\S+),(\S+),(\S+)"; //add sub 
@@ -119,7 +130,14 @@ namespace MIPS
             public static Stopwatch stopWatch = new Stopwatch(); // count time
             public static List<string> wb_ins = new List<string>();
             public static List<string> log = new List<string>();
-            public static string alg = "fcfs";
+            public static string alg = "";
+            public static Queue<string> ongoing=new Queue<string>();
+            public static Queue<List<string>> id_tor = new Queue<List<string>>();
+            public static string v2_hazard = "";
+            public static string v3_hazard = "";
+            public static string v2_forward = "";
+            public static string v3_forward = "";
+            public static Barrier forwarding = new Barrier(4); // synchronize data hazards
         }
 
         public static void IF()
@@ -128,6 +146,7 @@ namespace MIPS
 
             while (Globals.run)
             {
+                
                 Globals.count++;
                 int pc = Globals.pc;
                 List<string> instructions = Globals.instructionList;
@@ -145,6 +164,7 @@ namespace MIPS
                         instructions = Globals.cs_instructions;
                         if (pc < instructions.Count)
                         {
+                            
                             List<string> instruction = new List<string>()
                             { instructions[pc], instructions[pc + 1], instructions[pc + 2], instructions[pc + 3], "cs" };
                             Globals.cs_pc += 4;
@@ -219,67 +239,98 @@ namespace MIPS
         
             while (Globals.run)
             {
-                if (Globals.ifid.Count != 0)
+                
+                string dh = "no";
+                string dst = "";
+                List<string> instruction = new List<string> (){ "empty",""};
+                
+                if (Globals.ifid.Count != 0 || Globals.id_tor.Count!=0)
                 {
-                    List<string> instruction = Globals.ifid.Pop();
-
-                    string op = instruction[0];
-                    string v1 = instruction[1];
-                    string v2 = instruction[2];
-                    string v3 = instruction[3];
-
-                    switch (op)
+                    
+                    if (Globals.ifid.Count != 0)
                     {
-                        case "add":
-                            instruction[2] = Globals.registers[v2].ToString();
-                            instruction[3] = Globals.registers[v3].ToString();
-                            break;
-                        case "nop":
-                            break;
-                        case "addi":
-                            instruction[2] = Globals.registers[v2].ToString();
-                            break;
-                        case "sub":
-                            instruction[2] = Globals.registers[v2].ToString();
-                            instruction[3] = Globals.registers[v3].ToString();
-                            break;
-                        case "beq":
-                            instruction[1] = Globals.registers[v1].ToString();
-                            instruction[2] = Globals.registers[v2].ToString();
-                            break;
-                        case "bne":
-                            instruction[1] = Globals.registers[v1].ToString();
-                            instruction[2] = Globals.registers[v2].ToString();
-                            break;
-                        case "slt":
-                            instruction[2] = Globals.registers[v2].ToString();
-                            instruction[3] = Globals.registers[v3].ToString();
-                            break;
-                        case "lw":
-                            instruction[3] = Globals.registers[v3].ToString();
-                            break;
-                        case "sw":
-                            instruction[3] = Globals.registers[v3].ToString();
-                            instruction[1] = Globals.registers[v1].ToString();
-                            break;
-                        case "j":
-                            instruction[1] = Globals.registers[v1].ToString();
-                            break;
-                        case "and":
-                            instruction[2] = Globals.registers[v2].ToString();
-                            instruction[3] = Globals.registers[v3].ToString();
-                            break;
-                        case "or":
-                            instruction[2] = Globals.registers[v2].ToString();
-                            instruction[3] = Globals.registers[v3].ToString();
-                            break;
+                        List<string> instruction1 = Globals.ifid.Pop();
+                        Globals.id_tor.Enqueue(instruction1);
                     }
-                    Globals.b.SignalAndWait();
-                    Globals.idex.Push(instruction);
+                     instruction = Globals.id_tor.Dequeue();
+                 
+                    dh = Data_Hazard_Detection(instruction);
+                    if (dh == "no")
+                    {
+                        
+                        string op = instruction[0];
+                        string v1 = instruction[1];
+                        string v2 = instruction[2];
+                        string v3 = instruction[3];
+
+                        switch (op)
+                        {
+                            case "add":
+                                instruction[2] = Globals.registers[v2].ToString();
+                                instruction[3] = Globals.registers[v3].ToString();
+                                break;
+                            case "nop":
+                                break;
+                            case "addi":
+                                instruction[2] = Globals.registers[v2].ToString();
+                                break;
+                            case "sub":
+                                instruction[2] = Globals.registers[v2].ToString();
+                                instruction[3] = Globals.registers[v3].ToString();
+                                break;
+                            case "beq":
+                                instruction[1] = Globals.registers[v1].ToString();
+                                instruction[2] = Globals.registers[v2].ToString();
+                                break;
+                            case "bne":
+                                instruction[1] = Globals.registers[v1].ToString();
+                                instruction[2] = Globals.registers[v2].ToString();
+                                break;
+                            case "slt":
+                                instruction[2] = Globals.registers[v2].ToString();
+                                instruction[3] = Globals.registers[v3].ToString();
+                                break;
+                            case "lw":
+                                instruction[3] = Globals.registers[v3].ToString();
+                                break;
+                            case "sw":
+                              
+                                instruction[3] = Globals.registers[v3].ToString();
+                                instruction[1] = instruction[2];
+                                instruction[2] = Globals.registers[v1].ToString();
+                                break;
+                            case "jr":
+                                instruction[1] = Globals.registers[v1].ToString();
+                                break;
+                            case "and":
+                                instruction[2] = Globals.registers[v2].ToString();
+                                instruction[3] = Globals.registers[v3].ToString();
+                                break;
+                            case "or":
+                                instruction[2] = Globals.registers[v2].ToString();
+                                instruction[3] = Globals.registers[v3].ToString();
+                                break;
+                        }
+                        Globals.forwarding.SignalAndWait();
+                        Globals.forwarding.SignalAndWait();
+                        Globals.b.SignalAndWait();
+                        Globals.idex.Push(instruction);
+                    }
+
+                    
                 }
                 else
+                {
+                    Globals.forwarding.SignalAndWait();
+                    Globals.forwarding.SignalAndWait();
                     Globals.b.SignalAndWait();
 
+                }
+
+                    
+                
+                Globals.ongoing.Enqueue(instruction[0]);
+                Globals.ongoing.Enqueue(instruction[1]);
                 Globals.b2.SignalAndWait();
             }
         }
@@ -296,11 +347,15 @@ namespace MIPS
                     List<string> output = new List<string>();
                     switch (instruction[0])
                     {
-                        case "add":
+                        case "add":                           
                             result = int.Parse(instruction[2]) + int.Parse(instruction[3]);
                             output = new List<string>() { instruction[0], instruction[1], result.ToString(), instruction.Last() };
                             break;
                         case "addi":
+                            Console.WriteLine(instruction[0]);
+                            Console.WriteLine(instruction[1]);
+                            Console.WriteLine(instruction[2]);
+                            Console.WriteLine(instruction[3]);
                             result = int.Parse(instruction[2]) + int.Parse(instruction[3]);
                             output = new List<string>() { instruction[0], instruction[1], result.ToString(), instruction.Last() };
                             break;
@@ -326,21 +381,26 @@ namespace MIPS
                             output = new List<string>() { instruction[0], instruction[1], instruction[3], instruction.Last() };
                             break;
                         case "slt":
-                            if (int.Parse(instruction[1]) < int.Parse(instruction[2]))
-                                instruction[2] = "less";
+                            if (int.Parse(instruction[2]) < int.Parse(instruction[3]))
+                                instruction[2] = "1";
                             else
-                                instruction[1] = "not";
-                            output = new List<string>() { instruction[0], instruction[1], instruction[3], instruction.Last() };
+                                instruction[2] = "0";
+                            output = instruction;
                             break;
                         case "lw":
+                          
                             result = int.Parse(instruction[2]) + int.Parse(instruction[3]);
                             output = new List<string>() { instruction[0], instruction[1], result.ToString(), instruction.Last() };
                             break;
                         case "sw":
-                            result = int.Parse(instruction[2]) + int.Parse(instruction[3]);
-                            output = new List<string>() { instruction[0], instruction[1], result.ToString(), instruction.Last() };
+                            Console.WriteLine(instruction[0]);
+                            Console.WriteLine(instruction[1]);
+                            Console.WriteLine(instruction[2]);
+                            Console.WriteLine(instruction[3]);
+                            result = int.Parse(instruction[1]) + int.Parse(instruction[3]);
+                            output = new List<string>() { instruction[0], instruction[2], result.ToString(), instruction.Last() };
                             break;
-                        case "j":
+                        case "jr":
                             output = new List<string>() { instruction[0], instruction[1], instruction.Last() };
                             break;
                         case "and":
@@ -352,11 +412,33 @@ namespace MIPS
                             output = new List<string>() { instruction[0], instruction[1], binary_num1.logical_or(instruction[3]), instruction.Last() };
                             break;
                     }
+                    Globals.forwarding.SignalAndWait();
+
+                    if (Globals.v2_hazard == "ex")
+                    {
+                        
+                        Console.WriteLine("boolbool!");
+                        Console.WriteLine(instruction[2]);
+                        Console.WriteLine(output[2]);
+                        Globals.v2_forward = output[2];
+                    }
+                    if (Globals.v3_hazard == "ex")
+                    {
+                        Globals.v3_hazard = instruction[2];
+                    }
+                    Globals.forwarding.SignalAndWait();
                     Globals.b.SignalAndWait();
                     Globals.exmem.Push(output);
                 }
                 else
+                {
+                    Globals.forwarding.SignalAndWait();
+                    Globals.forwarding.SignalAndWait();
                     Globals.b.SignalAndWait();
+                    
+                }
+               
+
 
                 Globals.b2.SignalAndWait();
             }
@@ -383,6 +465,10 @@ namespace MIPS
 
                     if (instruction[0] == "sw")
                     {
+                        Console.WriteLine(instruction[0]);
+                        Console.WriteLine(instruction[1]);
+                        Console.WriteLine(instruction[2]);
+                        Console.WriteLine(instruction[3]);
                         flag = true;
                         int address = int.Parse(instruction[2]);
 
@@ -392,6 +478,16 @@ namespace MIPS
 
                     }
 
+                    Globals.forwarding.SignalAndWait();
+                    if (Globals.v2_hazard == "mem")
+                    {
+                        Globals.v2_forward = instruction[2];
+                    }
+                    if (Globals.v3_hazard == "mem")
+                    {
+                        Globals.v3_hazard = instruction[2];
+                    }
+                    Globals.forwarding.SignalAndWait();
                     Globals.b.SignalAndWait();
                     if (flag)
                         Globals.memwb.Push(newInstruction);
@@ -399,7 +495,13 @@ namespace MIPS
                         Globals.memwb.Push(instruction);
                 }
                 else
+                {
+                    Globals.forwarding.SignalAndWait();
+                    Globals.forwarding.SignalAndWait();
                     Globals.b.SignalAndWait();
+                    
+                }
+                   
 
                 Globals.b2.SignalAndWait();
             }
@@ -415,6 +517,16 @@ namespace MIPS
 
 
                     List<string> instruction = Globals.memwb.Pop();
+                    Globals.forwarding.SignalAndWait();
+                    if (Globals.v2_hazard == "wb")
+                    {
+                        Globals.v2_forward = instruction[2];
+                    }
+                    if (Globals.v3_hazard == "wb")
+                    {
+                        Globals.v3_hazard = instruction[2];
+                    }
+                    Globals.forwarding.SignalAndWait();
                     switch (instruction[0])
                     {
                         case "lw":
@@ -439,7 +551,7 @@ namespace MIPS
                             Globals.b.SignalAndWait();
                             Globals.registers[instruction[1]] = int.Parse(instruction[2]);
                             break;
-                        case "j":
+                        case "jr":
                             Globals.b.SignalAndWait();
                             Globals.pc = int.Parse(instruction[2]);
                             break;
@@ -458,11 +570,8 @@ namespace MIPS
                             }
                             break;
                         case "slt":
-                            if (instruction[1] == "less")
-                            {
-                                Globals.b.SignalAndWait();
-                                Globals.registers[instruction[1]] = int.Parse(instruction[2]);
-                            }
+                            Globals.b.SignalAndWait();
+                            Globals.registers[instruction[1]] = int.Parse(instruction[2]);                   
                             break;
                         case "and":
                             Globals.b.SignalAndWait();
@@ -475,14 +584,22 @@ namespace MIPS
                     }
                     string[] arr = { instruction[0], instruction.Last() };
                     Globals.wb_ins = new List<string>(arr);
+                    Globals.ongoing.Dequeue();
+                    Globals.ongoing.Dequeue();
                 }
                 else
                 {
+                    Globals.forwarding.SignalAndWait();
+                    Globals.forwarding.SignalAndWait();
                     string[] arr = { "no" };
                     Globals.wb_ins = new List<string>(arr);
+
                     Globals.b.SignalAndWait();
                 }
-
+                
+                   
+                
+                
                 Globals.b2.SignalAndWait();
             }
         }
@@ -491,11 +608,12 @@ namespace MIPS
         {
             System.IO.File.WriteAllText("log.txt", string.Empty);
 
-            string[] array = { "TextFile1.txt", "TextFile2.txt" };
+           // string[] array = { "TextFile1.txt", "TextFile2.txt" };
+            string[] array = { "TextFile1.txt" };
             List<string> names = new List<string>(array);
             pcb_creation(file_load(names));
 
-            Thread t = new Thread(() => choose_pcb("rr", "reg"));
+            Thread t = new Thread(() => choose_pcb("fcfs", "reg"));
             t.Start();
 
             Thread ifThread = new Thread(IF);
@@ -706,6 +824,7 @@ namespace MIPS
             Globals.bTimer.Stop();
             Globals.cs = true;
             int offset = Globals.cur_pcb * 33;
+            
             Console.WriteLine("loading to mem with offset " + offset);
             List<string> instructions = new List<string>();
             foreach (string item in Globals.load_to_pcb)
@@ -840,8 +959,8 @@ namespace MIPS
                 wb_string = "wb worked on instruction " + Globals.wb_ins[0] + " pcb " + Globals.wb_ins.Last();
             }
             Console.WriteLine(wb_string);
-
             Console.WriteLine(line);
+
             Action<object> action = (object obj) =>
             {
 
@@ -908,5 +1027,219 @@ namespace MIPS
             Console.WriteLine(second);
             Console.WriteLine(third);
         }
+        public static string Data_Hazard_Detection(List<string> instruction)
+        {
+
+            string op = instruction[0];
+            string v1 = instruction[1];
+            string v2 = instruction[2];
+            string v3 = instruction[3];
+            bool v2_flag = false;
+            bool v3_flag = false;
+            int index2 = 0;
+            int index3 = 0;
+            bool stall = false;
+            int my_count = 0;
+            foreach (string item in Globals.ongoing)
+            {
+                Console.WriteLine(item+" "+ my_count.ToString());
+               
+                my_count++;
+            }
+
+            if (op == "sw")
+            {
+                instruction[1] = instruction[2];
+                instruction[2] = v1;
+            }
+            if (op != "nop" && (Globals.ongoing.Contains(v2) || Globals.ongoing.Contains(v3)))
+            {
+                Console.WriteLine("heyyyyyyyyy");
+                string[] ongoing = Globals.ongoing.ToArray();
+
+                if (Globals.ongoing.Contains(v2))
+                {
+                     index2 = Array.IndexOf(ongoing, v2);
+                    if (ongoing[index2 - 1] == "lw" || ongoing[index2 - 1] == "sw")
+                    {
+                        if (index2 == 1)
+                            stall = true;
+                        else
+                            v2_flag = true;
+                    }
+                    else
+                        v2_flag = true;
+                }
+                if (Globals.ongoing.Contains(v3))
+                {
+                     index2 = Array.IndexOf(ongoing, v3);
+                    if (ongoing[index3 - 1] == "lw" || ongoing[index3 - 1] == "sw")
+                    {
+                        if (index3 == 1)
+                            stall = true;
+                        else
+                            v3_flag = true;
+                    }
+                    else
+                        v3_flag = true;
+                }
+
+                if (stall)
+                {
+                    List<string> nop = new List<string>() { "nop", instruction.Last() };
+                    pushFirst(Globals.id_tor, nop);
+                    Globals.forwarding.SignalAndWait();
+                    Globals.forwarding.SignalAndWait();
+                    Globals.b.SignalAndWait();
+                    Globals.idex.Push(instruction);
+                    return "nop";
+                }
+                else
+                {
+                    if (v2_flag)
+                    {
+                        Console.WriteLine("index2 is "+index2.ToString());
+                        switch (index2)
+                        {
+                            case 7:
+                                Globals.v2_hazard = "ex";
+                                Console.WriteLine("we did it");
+                                break;
+                            case 5:
+                                Globals.v2_hazard = "mem";
+                                break ;
+                            case 3:
+                                Globals.v2_hazard = "wb";
+                                break;
+                            default:
+                                break;
+                        }
+                        
+                    }
+                    if (v3_flag)
+                    {
+                        switch (index3)
+                        {
+                            case 7:
+                                Globals.v3_hazard = "ex";
+                                break;
+                            case 5:
+                                Globals.v3_hazard = "mem";
+                                break;
+                            case 3:
+                                Globals.v3_hazard = "wb";
+                                break;
+                            default:
+                                break;
+                        }
+
+                    }
+                    Globals.forwarding.SignalAndWait();
+                    Globals.forwarding.SignalAndWait();
+                    if (v2_flag)
+                    {
+                        v2 = Globals.v2_forward;
+                        Console.WriteLine("v222222");
+                        Console.WriteLine(v2);
+
+                    }
+                    if (v3_flag)
+                    {
+                        v3 = Globals.v3_forward;
+                        Console.WriteLine("v333333");
+
+                    }
+                    
+                    switch (op)
+                    {
+                        case "add":
+                            if (!v2_flag)
+                                instruction[2] = Globals.registers[v2].ToString();
+                            if (!v3_flag)
+                                instruction[3] = Globals.registers[v3].ToString();
+                            break;
+                        case "addi":
+                            if (!v2_flag)
+                                instruction[2] = Globals.registers[v2].ToString();
+                            break;
+                        case "sub":
+                            if (!v2_flag)
+                                instruction[2] = Globals.registers[v2].ToString();
+                            if (!v3_flag)
+                                instruction[3] = Globals.registers[v3].ToString();
+                            break;
+                        case "beq": /////
+                            return "no";
+                            break;
+                        case "bne": ///
+                            return "no";
+                            break;
+                        case "slt":
+                            if (!v2_flag)
+                                instruction[2] = Globals.registers[v2].ToString();
+                            if (!v3_flag)
+                                instruction[3] = Globals.registers[v3].ToString();
+                            break;
+                        case "lw": ////
+                            instruction[3] = Globals.registers[v3].ToString();
+                            break;
+                        case "sw": ////
+                            instruction[3] = Globals.registers[instruction[3]].ToString();
+                          
+                            instruction[2] = Globals.registers[instruction[2]].ToString();
+                            break;
+                        case "jr":
+                            return "no";
+                            break;
+                        case "and":
+                            if (!v2_flag)
+                                instruction[2] = Globals.registers[v2].ToString();
+                            if (!v3_flag)
+                                instruction[3] = Globals.registers[v3].ToString();
+                            break;
+                        case "or":
+                            if (!v2_flag)
+                                instruction[2] = Globals.registers[v2].ToString();
+                            if (!v3_flag)
+                                instruction[3] = Globals.registers[v3].ToString();
+                            break;
+                    }
+                    List<string> inst = new List<string>() { op, v1, v2, v3, instruction.Last() };
+                    Globals.b.SignalAndWait();
+                    Globals.idex.Push(inst);
+                    return op;
+
+                }
+
+
+            }
+            if (op == "sw")
+            {
+                instruction[1] = v1;
+                instruction[2] = v2;
+            }
+            return "no";
+        
+    }
+        public static void pushFirst(Queue<List<string>> tor, List<string> instruction)
+        {
+            if (tor.Count == 0)
+            {
+                tor.Enqueue(instruction);
+            }
+            else
+            {
+                List<string>[] strings = tor.ToArray();
+                tor.Clear();
+                tor.Enqueue(instruction);
+                foreach (List<string> item in strings)
+                {
+                    tor.Enqueue(item);
+                }
+
+            }
+        }
+
+
     }
 }
