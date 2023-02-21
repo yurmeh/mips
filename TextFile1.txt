@@ -1,11 +1,16 @@
 set
-$t2:111010
-$t3:111000
+$v0:7
+$t2:50
+$t3:5
 $
-and $v1,$t2,$t3
-and $v0,$t2,$t3
-and $v0,$t2,$t3
-and $v0,$t2,$t3
-and $v0,$t2,$t3
-and $v0,$t2,$t3
-and $v0,$t2,$t3
+jr $v0
+add $a1,$t2,$t3
+add $a1,$t2,$t3
+add $a1,$t2,$t3
+add $a1,$t2,$t3
+addi $t2,$t3,3
+sub $a0,$t2,$t3
+sub $a0,$t2,$t3
+
+
+
