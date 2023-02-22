@@ -119,7 +119,7 @@ namespace MIPS
             public static string v3_forward = "";
             public static Barrier forwarding = new Barrier(4); // synchronize data hazards
             public static bool stall = false;
-            public static readonly object ongoingLock = new object();
+            public static readonly object ongoingLock = new object(); //lock for Globals.ongoing
         }
 
         public static void IF()
@@ -154,7 +154,6 @@ namespace MIPS
                             {
                                 Globals.cs_pc = 0;
                                 Globals.b3.SignalAndWait();
-
                             }
                         }
                     }
@@ -162,20 +161,20 @@ namespace MIPS
                     {
                         // if about to cs but realizes only on proc left
                         if (pc < instructions.Count)
-                        {                        
+                        {
                             List<string> instruction = new List<string>()
-                            { instructions[pc], instructions[pc+1], instructions[pc+2], instructions[pc+3],Globals.cur_pcb.ToString() };
+                            { instructions[pc], instructions[pc+1], instructions[pc+2], instructions[pc+3],pc.ToString(),Globals.cur_pcb.ToString() };
                             Globals.pc += 4;
                             Globals.b.SignalAndWait();
                             Globals.ifid.Push(instruction);
-                        }                     
+                        }
                     }
                 }
                 else
                 {
                     // regular instructions
                     if (pc < instructions.Count)
-                    {              
+                    {
                         if (pc + 4 == instructions.Count)
                         {
                             Globals.procs[Globals.cur_pcb].SetState("dead");
@@ -185,7 +184,7 @@ namespace MIPS
                         }
 
                         List<string> instruction = new List<string>()
-                        { instructions[pc], instructions[pc+1], instructions[pc+2], instructions[pc+3] ,Globals.cur_pcb.ToString()};
+                        { instructions[pc], instructions[pc+1], instructions[pc+2], instructions[pc+3] ,pc.ToString(),Globals.cur_pcb.ToString()};
                         Globals.pc += 4;
                         Globals.b.SignalAndWait();
                         Globals.ifid.Push(instruction);
@@ -240,11 +239,13 @@ namespace MIPS
                                 instruction[3] = Globals.registers[v3].ToString();
                                 break;
                             case "beq":
-                                instruction[1] = Globals.registers[v1].ToString();
+                                instruction[1] = v3;
+                                instruction[3] = Globals.registers[v1].ToString();
                                 instruction[2] = Globals.registers[v2].ToString();
                                 break;
                             case "bne":
-                                instruction[1] = Globals.registers[v1].ToString();
+                                instruction[1] = v3;
+                                instruction[3] = Globals.registers[v1].ToString();
                                 instruction[2] = Globals.registers[v2].ToString();
                                 break;
                             case "slt":
@@ -290,16 +291,17 @@ namespace MIPS
                 }
                 else
                 {
+                    // if stall, push a nop instruction instead
                     queuedequeuelocked("in", "nop", "$nop");      
                     Globals.stall = false;
-                }                            
+                }  
+                
                 Globals.b2.SignalAndWait();
             }
         }
 
         public static void EX()
         {
-
             while (Globals.run)
             {
                 if (Globals.idex.Count != 0)
@@ -313,12 +315,8 @@ namespace MIPS
                             result = int.Parse(instruction[2]) + int.Parse(instruction[3]);
                             output = new List<string>() { instruction[0], instruction[1], result.ToString(), instruction.Last() };
                             break;
-                        case "addi":
-                            
-                            result = int.Parse(instruction[2]) + int.Parse(instruction[3]);
-                            Console.WriteLine("add i " +result);
-                            Console.WriteLine("add i " + instruction[2]);
-                            Console.WriteLine("add i " + instruction[3]);
+                        case "addi":                           
+                            result = int.Parse(instruction[2]) + int.Parse(instruction[3]);                      
                             output = new List<string>() { instruction[0], instruction[1], result.ToString(), instruction.Last() };
                             break;
                         case "nop":
@@ -329,18 +327,20 @@ namespace MIPS
                             output = new List<string>() { instruction[0], instruction[1], result.ToString(), instruction.Last() };
                             break;
                         case "beq":
-                            if (int.Parse(instruction[1]) - int.Parse(instruction[2]) == 0)
-                                instruction[1] = "equal";
+                            if (int.Parse(instruction[3]) - int.Parse(instruction[2]) == 0)
+                                instruction[2] = "equal";
                             else
-                                instruction[1] = "not";
-                            output = new List<string>() { instruction[0], instruction[1], instruction[3], instruction.Last() };
+                                instruction[2] = "not";
+                            int dest = int.Parse(instruction[4]) + int.Parse(instruction[1]) * 4;
+                            output = new List<string>() { instruction[0], dest.ToString(), instruction[2], instruction.Last() };
                             break;
                         case "bne":
-                            if (int.Parse(instruction[1]) - int.Parse(instruction[2]) == 0)
-                                instruction[1] = "equal";
+                            if (int.Parse(instruction[3]) - int.Parse(instruction[2]) == 0)
+                                instruction[2] = "equal";
                             else
-                                instruction[1] = "not";
-                            output = new List<string>() { instruction[0], instruction[1], instruction[3], instruction.Last() };
+                                instruction[2] = "not";
+                            int dest2 = int.Parse(instruction[4]) + int.Parse(instruction[1]) * 4;
+                            output = new List<string>() { instruction[0], dest2.ToString(), instruction[2], instruction.Last() };
                             break;
                         case "slt":
                             if (int.Parse(instruction[2]) < int.Parse(instruction[3]))
@@ -356,15 +356,10 @@ namespace MIPS
                         case "sw":                         
                             result = int.Parse(instruction[4]) + int.Parse(instruction[3]);                          
                             output = new List<string>() { instruction[0],"noting", instruction[2], result.ToString(), instruction.Last() };
-                            Console.WriteLine(output[0]);
-                            Console.WriteLine(output[1]);
-                            Console.WriteLine(output[2]);
-                            Console.WriteLine(output[3]);
                             break;
                         case "jr":
                             output = instruction;
-                            output[2] = ((int.Parse(output[2])-1)*4).ToString();
-                            
+                            output[2] = ((int.Parse(output[2])-1)*4).ToString();                          
                             break;
                         case "and":
                             logical binary_num = new logical(instruction[2]);
@@ -395,6 +390,7 @@ namespace MIPS
                     Globals.b.SignalAndWait();
 
                 }
+
                 Globals.b2.SignalAndWait();
             }
         }
@@ -448,7 +444,6 @@ namespace MIPS
 
         public static void WB()
         {
-
             while (Globals.run)
             {
                 if (Globals.memwb.Count != 0)
@@ -482,7 +477,6 @@ namespace MIPS
                             break;
                         case "addi":
                             Globals.b.SignalAndWait();
-                            Console.WriteLine("addi is writing" + instruction[2]);
                             Globals.registers[instruction[1]] = int.Parse(instruction[2]);
                             break;
                         case "sub":
@@ -490,22 +484,21 @@ namespace MIPS
                             Globals.registers[instruction[1]] = int.Parse(instruction[2]);
                             break;
                         case "jr":
-                            Console.WriteLine("jum[ing to " + instruction[2]);
                             Globals.b.SignalAndWait();
                             Globals.pc = int.Parse(instruction[2]);
                             break;
                         case "beq":
-                            if (instruction[1] == "equal")
+                            if (instruction[2] == "equal")
                             {
                                 Globals.b.SignalAndWait();
-                                Globals.pc = Globals.pc + int.Parse(instruction[2]);
+                                Globals.pc =  int.Parse(instruction[1]);
                             }
                             break;
                         case "bne":
-                            if (instruction[1] == "not")
+                            if (instruction[2] == "not")
                             {
                                 Globals.b.SignalAndWait();
-                                Globals.pc = Globals.pc + int.Parse(instruction[2]);
+                                Globals.pc =  int.Parse(instruction[1]);
                             }
                             break;
                         case "slt":
@@ -540,7 +533,7 @@ namespace MIPS
         public static void MainRun()
         {
             System.IO.File.WriteAllText("log.txt", string.Empty);
-             string[] array = { "TextFile1.txt"};          
+             string[] array = { "TextFile1.txt", "TextFile2.txt" };          
             List<string> names = new List<string>(array);
             Globals.ram[100] = 6;
 
@@ -769,9 +762,10 @@ namespace MIPS
             }
             Globals.cs_instructions = interpreter(instructions, Globals.re1, Globals.re2, Globals.re3);
             Globals.instructionList = interpreter(Globals.procs[pcb_num].GetIns(), Globals.re1, Globals.re2, Globals.re3);
+            
+            Globals.b3.SignalAndWait();
+            Globals.b3.SignalAndWait();
             Globals.pc = Globals.procs[pcb_num].GetPc();
-            Globals.b3.SignalAndWait();
-            Globals.b3.SignalAndWait();
             Console.WriteLine("finished loading to regs");
             Globals.cur_pcb = pcb_num;
             Globals.cs = false;
@@ -941,6 +935,11 @@ namespace MIPS
             }
             if (op == "jr")
                 instruction[2] = instruction[1];
+            if (op == "beq" || op == "bne")
+            { instruction[1] = v3;
+                instruction[3] = v1;
+            } 
+
             if (op != "nop" && (Globals.ongoing.Contains(instruction[2]) || Globals.ongoing.Contains(instruction[3])))
             {
                 string[] ongoing = queuetoarraylocked(Globals.ongoing);
@@ -980,6 +979,11 @@ namespace MIPS
                     {
                         instruction[1] = v1;
                         instruction[2] = v2;
+                    }
+                    if (op == "bne" || op == "bne")
+                    {
+                        instruction[1] = v1;
+                        instruction[3] = v3;
                     }
 
                     List<string> nop = new List<string>() { "nop","$nop", "$nop", "$nop", instruction.Last() };
@@ -1066,11 +1070,17 @@ namespace MIPS
                             if (!v3_flag)
                                 instruction[3] = Globals.registers[v3].ToString();
                             break;
-                        case "beq": /////
-                            return "no";
+                        case "beq": 
+                            if (!v2_flag)
+                                instruction[2] = Globals.registers[v2].ToString();
+                            if (!v3_flag)
+                                instruction[3] = Globals.registers[v3].ToString();
                             break;
-                        case "bne": ///
-                            return "no";
+                        case "bne": 
+                            if (!v2_flag)
+                                instruction[2] = Globals.registers[v2].ToString();
+                            if (!v3_flag)
+                                instruction[3] = Globals.registers[v3].ToString();
                             break;
                         case "slt":
                             if (!v2_flag)
@@ -1078,12 +1088,12 @@ namespace MIPS
                             if (!v3_flag)
                                 instruction[3] = Globals.registers[v3].ToString();
                             break;
-                        case "lw": ////
+                        case "lw": 
                             
                             if (!v3_flag)   
                                 instruction[3] = Globals.registers[v3].ToString();
                             break;
-                        case "sw": ////
+                        case "sw": 
                             Console.WriteLine("bitchhhhhhhh");
                             if (!v2_flag)
                                 instruction[2] = Globals.registers[instruction[2]].ToString();
@@ -1117,6 +1127,11 @@ namespace MIPS
             {
                 instruction[1] = v1;
                 instruction[2] = v2;
+            }
+            if (op == "bne" || op == "bne")
+            {
+                instruction[1] = v1;
+                instruction[3] = v3;
             }
             return "no";
         }
