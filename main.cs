@@ -207,15 +207,17 @@ namespace MIPS
 
                 if (Globals.ifid.Count != 0 || Globals.id_tor.Count != 0)
                 {
+                   
 
                     if (Globals.ifid.Count != 0)
                     {
                         List<string> instruction1 = Globals.ifid.Pop();
                         Globals.id_tor.Enqueue(instruction1);
                     }
+                 
                     instruction = Globals.id_tor.Dequeue();
                     // puts instruction from ifid to queue and takes the first one from the queue                   
-
+                   
                     string op = instruction[0];
                     string v1 = instruction[1];
                     string v2 = instruction[2];
@@ -292,7 +294,15 @@ namespace MIPS
                             }
 
                             List<string> nop = new List<string>() { "nop", "$nop", "$nop", "$nop", instruction.Last() };
-                            pushFirst(instruction);
+                            List<string> output = new List<string>();
+                            foreach (string item in instruction)
+                            {
+                                output.Add(item);
+                            }
+                            pushFirst(output);
+                           
+                         
+
                             Globals.forwarding.SignalAndWait();
                             Globals.forwarding.SignalAndWait();
                             Globals.b.SignalAndWait();
@@ -371,15 +381,15 @@ namespace MIPS
                             break;
                         case "beq":
                             if (!v2_flag)
-                                instruction[2] = Globals.registers[v2].ToString();
+                                instruction[2] = Globals.registers[instruction[2]].ToString();
                             if (!v3_flag)
-                                instruction[3] = Globals.registers[v3].ToString();
+                                instruction[3] = Globals.registers[instruction[3]].ToString();
                             break;
                         case "bne":
                             if (!v2_flag)
-                                instruction[2] = Globals.registers[v2].ToString();
+                                instruction[2] = Globals.registers[instruction[2]].ToString();
                             if (!v3_flag)
-                                instruction[3] = Globals.registers[v3].ToString();
+                                instruction[3] = Globals.registers[instruction[3]].ToString();
                             break;
                         case "slt":
                             if (!v2_flag)
@@ -480,6 +490,8 @@ namespace MIPS
                                 instruction[2] = "equal";
                             else
                                 instruction[2] = "not";
+                            
+                          
                             int dest = int.Parse(instruction[4]) + int.Parse(instruction[1]) * 4;
                             output = new List<string>() { instruction[0], dest.ToString(), instruction[2], instruction.Last() };
                             break;
@@ -639,6 +651,7 @@ namespace MIPS
                         case "beq":
                             if (instruction[2] == "equal")
                             {
+                               
                                 Globals.b.SignalAndWait();
                                 Globals.pc = int.Parse(instruction[1]);
                             }
@@ -668,11 +681,8 @@ namespace MIPS
                 }
                 else
                 {
-                    Console.WriteLine("wb is here 1");
                     Globals.forwarding.SignalAndWait();
-                    Console.WriteLine("wb is here 1.5");
                     Globals.forwarding.SignalAndWait();
-                    Console.WriteLine("wb is here 2");
                     string[] arr = { "no" };
                     Globals.wb_ins = new List<string>(arr);
                     Globals.b.SignalAndWait();
@@ -939,7 +949,8 @@ namespace MIPS
             {
                 Console.WriteLine("RAM at " + i + "is " + Globals.ram[i]);
             }
-            Console.WriteLine(Globals.b.ParticipantsRemaining);
+            
+
         }
 
         private static void SetTimer()
@@ -1087,6 +1098,7 @@ namespace MIPS
                     Globals.id_tor.Enqueue(item);
                 }
             }
+           
         }
         public static string[] queuetoarraylocked(Queue<string> tor)
         {
