@@ -18,6 +18,7 @@ namespace MIPS
         static void Main(string[] args)
         {
             MainRun();
+           
         }
         public static List<string> interpreter(List<string> ins_list, string re1, string re2, string re3)
         {
@@ -120,6 +121,12 @@ namespace MIPS
             public static Barrier forwarding = new Barrier(4); // synchronize data hazards
             public static bool stall = false;
             public static readonly object ongoingLock = new object(); //lock for Globals.ongoing
+            public static bool flush = false;
+            public static bool ex = false;
+            public static int id_branch = 0;
+            public static int ex_branch = 0;
+            public static Barrier b_flush = new Barrier(4); // synchronize flushing
+            public static int ongoing_count = 0;
         }
 
         public static void IF()
@@ -130,6 +137,7 @@ namespace MIPS
                 Globals.count++;
                 int pc = Globals.pc;
                 List<string> instructions = Globals.instructionList;
+               
                 if (Globals.cs)
                 {
                     if (Globals.cs_pc == 0)
@@ -175,6 +183,7 @@ namespace MIPS
                     // regular instructions
                     if (pc < instructions.Count)
                     {
+
                         if (pc + 4 == instructions.Count)
                         {
                             Globals.procs[Globals.cur_pcb].SetState("dead");
@@ -194,6 +203,7 @@ namespace MIPS
                         Globals.b.SignalAndWait();
                     }
                 }
+                Globals.b_flush.SignalAndWait();
                 Globals.b2.SignalAndWait();
             }
         }
@@ -203,7 +213,7 @@ namespace MIPS
 
             while (Globals.run)
             {   // initializing                                      
-                List<string> instruction = new List<string>() { "", "" };
+                List<string> instruction = new List<string>() { "idle", "idle" };
 
                 if (Globals.ifid.Count != 0 || Globals.id_tor.Count != 0)
                 {
@@ -228,6 +238,7 @@ namespace MIPS
                     int index3 = 0;
                     bool stall = false;
                     bool dh = false;
+                    
 
                     if (op == "sw")
                     {
@@ -249,6 +260,8 @@ namespace MIPS
 
                     if (dh)
                     {
+                        Console.WriteLine("boolbool");
+                        
                         string[] ongoing = queuetoarraylocked(Globals.ongoing);
 
                         if (Globals.ongoing.Contains(instruction[2]))
@@ -378,6 +391,7 @@ namespace MIPS
                                 instruction[2] = Globals.registers[v2].ToString();
                             if (!v3_flag)
                                 instruction[3] = Globals.registers[v3].ToString();
+                           
                             break;
                         case "beq":
                             if (!v2_flag)
@@ -407,11 +421,16 @@ namespace MIPS
                             if (!v3_flag)
                                 instruction[3] = Globals.registers[instruction[3]].ToString();
                             instruction = new List<string>() { op, "nothing", instruction[2], instruction[1], instruction[3], instruction.Last() };
+                          
                             break;
                         case "jr":
                             if (!v2_flag)
                                 instruction[2] = Globals.registers[instruction[2]].ToString();
                             instruction[1] = "jrr";
+                            Globals.flush=true;
+                            Globals.id_branch = (int.Parse(instruction[2])-1)*4;
+                            // jr doesnt workk
+                            Console.WriteLine(Globals.id_branch);
                             break;
                         case "and":
                             if (!v2_flag)
@@ -455,7 +474,32 @@ namespace MIPS
                     queuedequeuelocked("in", "nop", "$nop");
                     Globals.stall = false;
                 }
+                Globals.b_flush.SignalAndWait();
+                if (Globals.flush)
+                {
+                    if (!Globals.ex)
+                    {
+                        Globals.id_tor.Clear();
+                        Globals.ifid.Clear();
+                        Globals.pc = Globals.id_branch;
+                    }
+                    else
+                    {
+                     
+                        Globals.id_tor.Clear();
+                        Globals.ifid.Clear();
+                        Globals.idex.Clear();
+                        Globals.pc = Globals.ex_branch;
+                        Globals.ex = false;
+                        Clean2();
+                    }
+                    Globals.flush = false;
+
+                }
+                
+               
                 Globals.b2.SignalAndWait();
+               
             }
         }
 
@@ -484,6 +528,7 @@ namespace MIPS
                         case "sub":
                             result = int.Parse(instruction[2]) - int.Parse(instruction[3]);
                             output = new List<string>() { instruction[0], instruction[1], result.ToString(), instruction.Last() };
+                          
                             break;
                         case "beq":
                             if (int.Parse(instruction[3]) - int.Parse(instruction[2]) == 0)
@@ -493,6 +538,14 @@ namespace MIPS
                             
                           
                             int dest = int.Parse(instruction[4]) + int.Parse(instruction[1]) * 4;
+                            if (instruction[2]=="equal")
+                            {
+                                Globals.flush = true;
+                                Globals.ex = true;
+                                
+                                Globals.ex_branch = dest;
+                                
+                            }
                             output = new List<string>() { instruction[0], dest.ToString(), instruction[2], instruction.Last() };
                             break;
                         case "bne":
@@ -501,6 +554,12 @@ namespace MIPS
                             else
                                 instruction[2] = "not";
                             int dest2 = int.Parse(instruction[4]) + int.Parse(instruction[1]) * 4;
+                            if (instruction[2] == "not")
+                            {
+                                Globals.flush = true;
+                                Globals.ex = true;
+                                Globals.ex_branch = dest2;
+                            }
                             output = new List<string>() { instruction[0], dest2.ToString(), instruction[2], instruction.Last() };
                             break;
                         case "slt":
@@ -551,7 +610,7 @@ namespace MIPS
                     Globals.b.SignalAndWait();
 
                 }
-
+                Globals.b_flush.SignalAndWait();
                 Globals.b2.SignalAndWait();
             }
         }
@@ -590,7 +649,7 @@ namespace MIPS
                     }
                     Globals.forwarding.SignalAndWait();
                     Globals.b.SignalAndWait();
-                    queuedequeuelocked("out", "", "");
+                    
                     Globals.memwb.Push(instruction);
                 }
                 else
@@ -599,6 +658,7 @@ namespace MIPS
                     Globals.forwarding.SignalAndWait();
                     Globals.b.SignalAndWait();
                 }
+                
                 Globals.b2.SignalAndWait();
             }
         }
@@ -643,17 +703,18 @@ namespace MIPS
                         case "sub":
                             Globals.b.SignalAndWait();
                             Globals.registers[instruction[1]] = int.Parse(instruction[2]);
+                       
                             break;
                         case "jr":
                             Globals.b.SignalAndWait();
-                            Globals.pc = int.Parse(instruction[2]);
+                            //Globals.pc = int.Parse(instruction[2]);
                             break;
                         case "beq":
                             if (instruction[2] == "equal")
                             {
                                
                                 Globals.b.SignalAndWait();
-                                Globals.pc = int.Parse(instruction[1]);
+                                //Globals.pc = int.Parse(instruction[1]);
                             }
                             break;
                         case "bne":
@@ -687,8 +748,11 @@ namespace MIPS
                     Globals.wb_ins = new List<string>(arr);
                     Globals.b.SignalAndWait();
                 }
-
+              
+                Globals.b_flush.SignalAndWait();
+                queuedequeuelocked("out", "", "");
                 Globals.b2.SignalAndWait();
+               
             }
         }
 
@@ -962,6 +1026,23 @@ namespace MIPS
         }
         private static void OnTimedEvent(Object source, ElapsedEventArgs e)
         {
+            if (Globals.ifid.Count + Globals.idex.Count + Globals.exmem.Count + Globals.memwb.Count != 0)
+            {
+                Globals.b2.SignalAndWait();
+            }
+            else
+            {
+                if (Globals.run)
+                {
+                    Globals.run = false;
+                    Globals.aTimer.Stop();
+                    end();
+                    Globals.b2.SignalAndWait();
+                    Globals.aTimer.Dispose();
+                    Globals.bTimer.Stop();
+                    Globals.bTimer.Dispose();
+                }
+            }
             Console.WriteLine("pc is " + Globals.pc);
             TimeSpan ts = Globals.stopWatch.Elapsed;
             string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
@@ -1037,23 +1118,12 @@ namespace MIPS
             Task t1 = new Task(action, "log.txt");
             t1.Start();
 
-            if (Globals.ifid.Count + Globals.idex.Count + Globals.exmem.Count + Globals.memwb.Count != 0)
+            
+            foreach (string item in Globals.ongoing)
             {
-                Globals.b2.SignalAndWait();
+                Console.WriteLine(item);
             }
-            else
-            {
-                if (Globals.run)
-                {
-                    Globals.run = false;
-                    Globals.aTimer.Stop();
-                    end();
-                    Globals.b2.SignalAndWait();
-                    Globals.aTimer.Dispose();
-                    Globals.bTimer.Stop();
-                    Globals.bTimer.Dispose();
-                }
-            }
+            Globals.
         }
 
         private static void SetTimer_cs()
@@ -1122,10 +1192,33 @@ namespace MIPS
                 }
                 else
                 {
-                    Globals.ongoing.Dequeue();
-                    Globals.ongoing.Dequeue();
+                    if (Globals.ongoing.Count > 0)
+                    {
+                        if (Globals.ongoing_count < 4)
+                        {
+                            Globals.ongoing_count += 1;
+                        }
+                        else {
+                            Globals.ongoing.Dequeue();
+                            Globals.ongoing.Dequeue();
+                        }
+                        
+                    }
                 }
             }
+        }
+        public static void Clean2()
+        {
+            lock (Globals.ongoingLock)
+            {
+                string[] ongoing = Globals.ongoing.ToArray();
+                Globals.ongoing.Clear();
+                for (int i = 0; i < ongoing.Length-2; i++)
+                {
+                    Globals.ongoing.Enqueue(ongoing[i]);
+                }
+            }
+
         }
     }
 }
