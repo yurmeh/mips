@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -110,7 +111,8 @@ namespace MIPS
             public static Barrier b = new Barrier(5); // synchronize 5 parts
             public static Barrier b2 = new Barrier(6); // synchronize 5 parts with stopwatch
             public static Barrier b3 = new Barrier(2); // synchronize with cs
-           
+            public static Barrier b_srt = new Barrier(2); // synchronize with srt
+
             public static List<string> instructionList = new List<string>(); // instruction list (loaded from files)
             public static int[] ram = new int[500];
             public static bool run = false;
@@ -148,7 +150,7 @@ namespace MIPS
             public static string wb_string = "";
             public static bool not_complete=true;
             public static string control_alg = "";
-            public static bool take_branch=true;
+            public static bool take_branch=false;
             public static int predictor = 0;
             public static bool branch_check = false;
             public static bool final_flag = false;
@@ -191,8 +193,10 @@ namespace MIPS
                 {
                     if (Globals.cs_pc == 0)
                     {
+                        Console.WriteLine("did i go here?");
                         // I double check in case cs is cancelled when there is only one process left
                         Globals.b3.SignalAndWait();
+                        Console.WriteLine("did i pass?");
                     }
 
                     if (Globals.cs)
@@ -511,6 +515,7 @@ namespace MIPS
                                 case "1-Bit":
                                     if (Globals.take_branch)
                                     {
+
                                         Globals.flush = true;
                                         Globals.id_branch =int.Parse(instruction[4]) + int.Parse(instruction[1]) * 4;
 
@@ -718,6 +723,7 @@ namespace MIPS
                         
                         Globals.cs_pc = 0;
                         Globals.b3.SignalAndWait();
+
                     }
 
                 }
@@ -849,9 +855,10 @@ namespace MIPS
                                             Globals.final_flag = true;
                                         }
                                     }
-                                    if (Globals.control_alg=="1-Bit")
+                                    if (Globals.control_alg=="1-Bit" && Globals.predictor==1)
                                     {
                                         Globals.take_branch = !Globals.take_branch;
+                                        Globals.predictor = 0;
                                     }
                                     if (Globals.control_alg == "2-Bit" && Globals.predictor == 2)
                                     {
@@ -929,9 +936,11 @@ namespace MIPS
                                             Globals.final_flag = true;
                                         }
                                     }
-                                    if (Globals.control_alg == "1-Bit")
+                                    if (Globals.control_alg == "1-Bit" && Globals.predictor == 1)
                                     {
                                         Globals.take_branch = !Globals.take_branch;
+                                        Globals.predictor = 0;
+                                        Console.WriteLine("take reverted");
                                     }
                                     if (Globals.control_alg == "2-Bit" && Globals.predictor == 2)
                                     {
@@ -1418,6 +1427,7 @@ namespace MIPS
                 count++;
             }
         }
+       
         public static void addProc(List<string> instructions)
         {
             Console.WriteLine("first");
@@ -1462,6 +1472,7 @@ namespace MIPS
                     Globals.procs[count] = new_pcb;
                 }
             Console.WriteLine("add proc finished");
+         
                 
            
            
@@ -1479,6 +1490,11 @@ namespace MIPS
             Globals.cs = true;
             
             int next_pcb = Globals.cur_pcb + 1;
+            if (Globals.cur_pcb!=-1)
+            {
+                Globals.procs[Globals.cur_pcb].SetPc(Globals.pc);
+            }
+           
             int count = 0;
             bool exist = true;
             Console.WriteLine("dolly");
@@ -1604,7 +1620,29 @@ namespace MIPS
                     if (load == "reg")
                     {
                         int max_index = 0;
-                        int max_value = Globals.procs[0].GetSize() - Globals.procs[0].GetPc();
+                        int max_value = 0;
+                      
+                        for (int i = 0; i < Globals.procs.Length; i++)
+                        {
+                            if (Globals.procs[i] != null)
+                            {
+                                Console.WriteLine("proccess" + i);
+                                if (Globals.procs[i].GetState() != "dead")
+                                {
+                                    Console.WriteLine("bar" + i);
+                                    Console.WriteLine(Globals.procs[i].GetSize());
+                                    Console.WriteLine(Globals.procs[i].GetPc() / 4);
+
+                                    if (Globals.procs[i].GetSize() - Globals.procs[i].GetPc() / 4 > 0)
+                                    {
+                                        Console.WriteLine("or");
+                                        max_value = Globals.procs[i].GetSize() - Globals.procs[i].GetPc();
+                                        max_index = i;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                         int size = 0;
                         for (int i = 1; i < Globals.procs.Length; i++)
                         {
@@ -1612,7 +1650,7 @@ namespace MIPS
                             {
                                 if (Globals.procs[i].GetState() != "dead")
                                 {
-                                    size = Globals.procs[i].GetSize() - Globals.procs[i].GetPc();
+                                    size = Globals.procs[i].GetSize() - Globals.procs[i].GetPc()/4;
                                     if (size < max_value)
                                     {
                                         max_value = size;
@@ -1621,7 +1659,7 @@ namespace MIPS
                                 }
                             }
                         }
-                        if (Globals.procs[max_index].GetSize() - Globals.procs[max_index].GetPc() > 0)
+                        if (Globals.procs[max_index].GetSize() - Globals.procs[max_index].GetPc()/4 > 0)
                         {
 
                             pcb_load_to_reg(max_index, "sjn");
@@ -1635,53 +1673,100 @@ namespace MIPS
                     }
                     else
                         pcb_load_to_mem(Globals.cur_pcb, algorithm);
-                    break;
+                    break;         
                 case "srt":
-                    if (load == "reg")
+                    int min_index = 0;
+                    
+                    int min_value = 0;
+                    for (int i = 0; i < Globals.procs.Length; i++)
                     {
-                        int max_index = 0;
-                        int max_value = Globals.procs[0].GetSize() - Globals.procs[0].GetPc();
-                        int size = 0;
-                        Console.WriteLine("max value is" + max_value);
-                        for (int i = 1; i < Globals.procs.Length; i++)
+                        if (Globals.procs[i]!=null)
                         {
-
-                            if (Globals.procs[i] != null)
+                            Console.WriteLine("proccess"+i);
+                            if (Globals.procs[i].GetState()!="dead")
                             {
-                                Console.WriteLine("i did go in");
-                                if (Globals.procs[i].GetState() != "dead")
+                                Console.WriteLine("bar"+i);
+                                Console.WriteLine(Globals.procs[i].GetSize());
+                                Console.WriteLine(Globals.procs[i].GetPc() / 4);
+                                
+                                if (Globals.procs[i].GetSize() - Globals.procs[i].GetPc() / 4>0)
                                 {
-                                    Console.WriteLine("also here");
-                                    Console.WriteLine("bushhh");
-                                    size = Globals.procs[i].GetSize() - Globals.procs[i].GetPc();
-                                    Console.WriteLine("size is " + size);
-                                    if (size < max_value)
-                                    {
-                                        Console.WriteLine("i exchanged");
-                                        max_value = size;
-                                        max_index = i;
-                                    }
+                                    Console.WriteLine("or");
+                                    min_value = Globals.procs[i].GetSize() - Globals.procs[i].GetPc();
+                                    min_index = i;
+                                    break;
                                 }
                             }
                         }
-                        if (Globals.procs[max_index].GetSize() - Globals.procs[max_index].GetPc() > 0)
-                        {
+                    }
+                   
+                     
+                    int size2 = 0;
+                    for (int i = 0; i < Globals.procs.Length; i++)
+                    {
 
-                            pcb_load_to_reg(max_index, "srt");
-                            Console.WriteLine("the index is " + max_index);
+                        if (Globals.procs[i] != null)
+                        {
+                            Console.WriteLine("at least here");
+                            if (Globals.procs[i].GetState() != "dead")
+                            {
+                                
+                                size2 = Globals.procs[i].GetSize() - Globals.procs[i].GetPc()/4;
+                                Console.WriteLine("i checked proccess " + i + " and size is " + size2);
+                                if (size2 < min_value)
+                                {
+                                    Console.WriteLine("i exchanged");
+                                    min_value = size2;
+                                    min_index = i;
+                                }
+                            }
+                        }
+                    }
+                    Console.WriteLine("min index is"+min_index+"with size of "+min_value);
+                    if (load=="mem")
+                    {
+                        Console.WriteLine("yes in mem");
+                        if (min_index==Globals.cur_pcb)
+                        {
+                            if (Globals.procs[min_index].GetState() != "dead")
+                            {
+                                Globals.cs = false;
+                                Console.WriteLine("mem 1");
+                            }
+                            else
+                            {
+                                Console.WriteLine("mem2");
+                                pcb_load_to_mem(min_index, "srt");
+                         
+                                
+                            }
+                                
+
+
+
                         }
                         else
                         {
-                            Globals.cs = false;
-                            Globals.ended = true;
+                            Console.WriteLine("mem3");
+                            pcb_load_to_mem(min_index, "srt");
                         }
-
                     }
                     else
                     {
-                        pcb_load_to_mem(Globals.cur_pcb, algorithm);
+                        if (Globals.procs[min_index].GetSize() - Globals.procs[min_index].GetPc()/4 > 0)
+                        {
+                            Console.WriteLine("yes we are loading");
+                            pcb_load_to_reg(min_index, "srt");
+                          
+                        }
+                        else
+                        {
+                            Console.WriteLine("brave");
+                            Globals.cs = false;
+                            Globals.ended = true;
+                        }
                     }
-                       
+               
                     break;
                 default:
                     break;
@@ -1750,16 +1835,25 @@ namespace MIPS
                 Globals.cs = true;
                 Console.WriteLine("righttttttt");
                 int index = 0;
+               
                 while (Globals.procs[index]!=null)
                 {
+
                     index++;
                 }
                 index--;
+                Console.WriteLine("index is"+index);
+                Globals.cs_pc = 0;
                 Thread t2 = new Thread(() => MIPS.Program.pcb_load_to_reg(index,"srt"));
                 t2.Start();
                 Globals.srt_flag = false;
             }
             
+        }
+        public static void thread_choose_pcb(string alg,string load)
+        {
+            Thread t2 = new Thread(() => MIPS.Program.choose_pcb(alg, load));
+            t2.Start();
         }
 
         public static void end()
@@ -1906,7 +2000,7 @@ namespace MIPS
             string[] readText = File.ReadAllLines("log.txt", Encoding.UTF8);
             string[] newText = new string[] { if_string, id_string, ex_string, mem_string, wb_string, line };
             string[] combined = readText.Concat(newText).ToArray();
-            File.WriteAllLines("log.txt", combined, Encoding.UTF8);
+            
 
 
             Globals.b2.SignalAndWait();
